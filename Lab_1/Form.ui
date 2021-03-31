@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>914</width>
+    <height>649</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QFrame" name="frame">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>30</y>
+      <width>841</width>
+      <height>251</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+   </widget>
+   <widget class="QTableWidget" name="tableWidget">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>310</y>
+      <width>421</width>
+      <height>251</height>
+     </rect>
+    </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="alternatingRowColors">
+     <bool>false</bool>
+    </property>
+    <property name="rowCount">
+     <number>10</number>
+    </property>
+    <property name="columnCount">
+     <number>10</number>
+    </property>
+    <attribute name="horizontalHeaderCascadingSectionResizes">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="horizontalHeaderMinimumSectionSize">
+     <number>20</number>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>30</number>
+    </attribute>
+    <attribute name="verticalHeaderMinimumSectionSize">
+     <number>20</number>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>20</number>
+    </attribute>
+    <row>
+     <property name="text">
+      <string>X1</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X2</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X3</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X4</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X5</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X6</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X7</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X8</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X9</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>X10</string>
+     </property>
+    </row>
+    <column>
+     <property name="text">
+      <string>X1</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X2</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X3</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X4</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X5</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X6</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X7</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X8</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X9</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>X10</string>
+     </property>
+    </column>
+   </widget>
+   <widget class="QPushButton" name="pushButton">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>310</y>
+      <width>151</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Режим удаления</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>914</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuSome_text">
+    <property name="title">
+     <string>Some text</string>
+    </property>
+   </widget>
+   <addaction name="menuSome_text"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

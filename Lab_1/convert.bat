@@ -1,1 +1,1 @@
-pyuic5 simple.ui -o simple.py
+pyuic5 Form.ui -o Form.py
