@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from datetime import time
 from math import cos, sin, atan2, sqrt
+from time import sleep
 from typing import Optional, Any, List
 
 from Lab_1 import Form
@@ -10,7 +12,7 @@ import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QGraphicsScene, QGraphicsView, QGraphicsRectItem, QGraphicsItem, \
     QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsLineItem, QGraphicsSceneEvent, QGraphicsTextItem
 from PyQt5.QtGui import QPainter, QColor, QFont, QMouseEvent, QCursor, QPen
-from PyQt5.QtCore import Qt, QRectF, QSizeF, QPointF
+from PyQt5.QtCore import Qt, QRectF, QSizeF, QPointF, QLineF
 from PyQt5.uic.properties import QtCore
 
 
@@ -61,12 +63,16 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         # ----------------------<Переменные для рисования фигур>----------------------
         self.ellipse_diameter = 30
+        self.ellipse_radius = self.ellipse_diameter / 2
 
         self.start_line_item: QGraphicsLineItem = None
         self.current_text = None
         self.start_line_pos_x, self.start_line_pos_y = None, None
 
         # ----------------------<Переопределенеия ивентов>----------------------
+        self.draw_scene.mouseMoveEvent = lambda x: None
+        self.draw_scene.mouseReleaseEvent = lambda x: None
+
         self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
 
         self.pushButton.clicked.connect(self.change_mod)
@@ -79,6 +85,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.current_graph: Graph
         self.current_start_point: Point
         self.current_finish_point: Point
+        self.item = None
         # graph = namedtuple()
 
     def myMousePressCreateEvent(self, event):
@@ -87,8 +94,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             if not item:
                 self.draw_circle(event)
             else:
-                # print(item.pos())
-                self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
+                self.current_point: Point = self.find_point_in_list(item)
+                print(self.current_point.point.pos())
+                self.current_point.point.setBrush(Qt.yellow)
+                self.draw_scene.mouseMoveEvent = self.myMouseMoveEvent
+                self.draw_scene.mouseReleaseEvent = self.scene_move_mouse_release_event  # print(item.pos())
+
         elif event.button() == Qt.RightButton:
             item = self.get_item_under_mouse(QGraphicsEllipseItem)
             if item:
@@ -99,16 +110,34 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     self.start_line_item = None
                 self.start_line_pos_x, self.start_line_pos_y = None, None
 
-    def myMousePressDeleteEvent(self, event):
-        """Обработка клика на удаление"""
-        if event.button() == Qt.LeftButton:
-            item: QGraphicsItem = self.get_item_under_mouse()
-            self.delete_graph(item)
+    def myMouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        # self.current_item.setBrush(Qt.yellow)
+        item: QGraphicsEllipseItem = self.current_point.point
+        lable: QGraphicsTextItem = self.current_point.label
 
-    def myMouseMoveEvent(self, event):
-        pass
+        item_x = item.rect().x()
+        item_y = item.rect().y()
 
-    def get_items_to_remove(self, item):
+        # здесь мы отнимаем ещё и радиус точки, чтобы создавалось ощущение, что курсор тянет точку за центр
+        item.setPos(
+            event.scenePos().x() - self.ellipse_radius,
+            event.scenePos().y() - self.ellipse_radius
+        )
+
+        lable.setPos(
+            event.scenePos().x() - self.ellipse_radius + self.ellipse_radius,
+            event.scenePos().y() - self.ellipse_radius - self.ellipse_radius - 5
+        )
+
+    def scene_move_mouse_release_event(self, _: QGraphicsSceneMouseEvent) -> None:
+        """Просто отключаем движение после отпускания кнопки мыши"""
+        self.draw_scene.mouseMoveEvent = lambda x: None
+        self.draw_scene.mouseReleaseEvent = lambda x: None
+
+        self.redraw_items()
+        self.current_point.point.setBrush(Qt.red)
+
+    def remove_items(self, item):
         """Удаление элементов"""
 
         # флаг для проверки удаления вершины из графа
@@ -139,6 +168,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         # удаляем граф
         if remove_flag:
+            self.point_items.remove(list_to_remove_points[0])
             for arrow in list_to_remove_arrows:
                 self.remove_arrow(arrow)
             for point in list_to_remove_points:
@@ -167,19 +197,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.draw_scene.removeItem(item.first_leaf)
         self.draw_scene.removeItem(item.second_leaf)
 
-    def delete_graph(self, item):
-        """Удаление вершины графа её путей"""
-        for graph in self.graph_items:
-            if item in graph.start_point:
-                for line in graph:
-                    self.draw_scene.removeItem(line)
-                self.graph_items.remove(graph)
-            elif item == graph.finish_point:
-                pass
-                # for graph_item in graph:
-                #     self.draw_scene.removeItem(graph_item)
-                break
-
     def draw_circle(self, event):
         """Рисовние кргуа"""
         if not len(self.point_items) >= 10:
@@ -199,9 +216,14 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def draw_arrow(self, item: QGraphicsItem):
         """Рисовние стрелок"""
         if self.start_line_pos_x:
-            sharp = 0.25  # острота стрелки
 
             self.start_line_item.setBrush(Qt.red)
+
+            if self.would_be_bidirectionality(item):
+                self.start_line_item = None
+                self.start_line_pos_x, self.start_line_pos_y = None, None
+                return
+            sharp = 0.25  # острота стрелки
 
             x1 = self.start_line_pos_x
             y1 = self.start_line_pos_y
@@ -274,7 +296,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 # print(f'Item under mouse: {item}')
                 return item
 
-    def find_point_in_list(self, item):
+    def find_point_in_list(self, item) -> Point:
         for i in self.point_items:
             if i.point == item:
                 return i
@@ -298,8 +320,108 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def mouseRemoveItemEvent(self, event):
         if event.button() == Qt.RightButton:
             item = self.get_item_under_mouse()
-            self.get_items_to_remove(item)
+            self.remove_items(item)
 
+    # TODO : тут такой бред в плане логики функций, надоб исправить
+    def redraw_items(self):
+        """Удаление элементов"""
+
+        # флаг для проверки удаления вершины из графа
+        item = self.current_point.point
+
+        # листы на удалене итемов
+        list_to_redraw_points: List[Point] = []
+        list_to_redraw_arrows: List[Arrow] = []
+
+        # пробегаем списко графоф
+        for graph in self.graph_items:
+            if item == graph.start_point.point or item == graph.finish_point.point:
+
+                # если удаляем по начальной вершине
+                if item == graph.start_point.point:
+                    # remove all except finish
+                    self.redraw_arrow(graph.arrow, True)
+                    list_to_redraw_points.append(graph.start_point)
+
+                # если удаляем по конечной вершине
+                else:
+                    self.redraw_arrow(graph.arrow, False)
+                    list_to_redraw_points.append(graph.finish_point)
+
+    def redraw_arrow(self, arrow: Arrow, from_start: bool):
+        sharp = 0.25  # острота стрелки
+        if not from_start:
+            x2, y2 = self.get_circle_center(self.current_point.point)
+
+            lineCoords: QLineF = arrow.line.line()
+            lineCoords.setP2(QPointF(x2, y2))
+            arrow.line.setLine(lineCoords)
+
+            x1, y1 = lineCoords.p1().x(), lineCoords.p1().y()
+
+            x = x2 - x1
+            y = y2 - y1
+
+            # lons = sqrt(x * x + y * y) / 7  # длина лепестков % от длины стрелки
+            angle = atan2(y, x)  # угол наклона линии
+
+            lons = 20
+
+            f1x2 = x2 - lons * cos(angle - sharp)
+            f1y2 = y2 - lons * sin(angle - sharp)
+            lineCoords.setP1(QPointF(x2, y2))
+            lineCoords.setP2(QPointF(f1x2, f1y2))
+            arrow.first_leaf.setLine(lineCoords)
+
+            f1x2 = x2 - lons * cos(angle + sharp)
+            f1y2 = y2 - lons * sin(angle + sharp)
+
+            lineCoords.setP1(QPointF(x2, y2))
+            lineCoords.setP2(QPointF(f1x2, f1y2))
+            arrow.second_leaf.setLine(lineCoords)
+
+        else:
+            x1, y1 = self.get_circle_center(self.current_point.point)
+
+            lineCoords: QLineF = arrow.line.line()
+            lineCoords.setP1(QPointF(x1, y1))
+            arrow.line.setLine(lineCoords)
+
+            # костыли это наше всё
+            for graph in self.graph_items:
+                if graph.arrow == arrow:
+                    x2, y2 = self.get_circle_center(graph.finish_point.point)
+                    break
+                else:
+                    x2, y2 = self.get_circle_center(self.current_point.point)
+
+            x = x2 - x1
+            y = y2 - y1
+
+            # lons = sqrt(x * x + y * y) / 7  # длина лепестков % от длины стрелки
+            angle = atan2(y, x)  # угол наклона линии
+
+            lons = 20
+
+            f1x2 = x2 - lons * cos(angle - sharp)
+            f1y2 = y2 - lons * sin(angle - sharp)
+            lineCoords.setP1(QPointF(x2, y2))
+            lineCoords.setP2(QPointF(f1x2, f1y2))
+            arrow.first_leaf.setLine(lineCoords)
+
+            f1x2 = x2 - lons * cos(angle + sharp)
+            f1y2 = y2 - lons * sin(angle + sharp)
+
+            lineCoords.setP1(QPointF(x2, y2))
+            lineCoords.setP2(QPointF(f1x2, f1y2))
+            arrow.second_leaf.setLine(lineCoords)
+
+    def would_be_bidirectionality(self, item: QGraphicsItem)->bool:
+        for graph in self.graph_items:
+            if item == graph.start_point.point or item == graph.finish_point.point:
+                if self.start_line_item == graph.start_point.point or self.start_line_item == graph.finish_point.point:
+                    return True
+            return False
 
 def main():
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
@@ -307,14 +429,11 @@ def main():
     window.show()  # показываем окно
     app.exec_()  # запускаем приложение
 
-
 if __name__ == '__main__':
     main()
 
-# TODO : фигура не двигается
-# TODO : сделать удаление
-# TODO : продумать хранение графов
-# TODO : прописать ивент на движение
+# TODO : сделать удаление стрелок
 # TODO : подпись веса к стрелке
 # TODO : импорт/экспорт
 # TODO : динамическая перерисовка таблицы
+# TODO : методы из задания
