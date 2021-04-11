@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import time
 from math import cos, sin, atan2, sqrt
+import random
 from time import sleep
 from typing import Optional, Any, List
 
@@ -37,6 +38,7 @@ class Arrow:
     line: QGraphicsLineItem
     first_leaf: QGraphicsLineItem
     second_leaf: QGraphicsLineItem
+    weight: QGraphicsTextItem
 
 
 @dataclass
@@ -150,8 +152,11 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         # пробегаем списко графоф
         for graph in self.graph_items:
-            if item == graph.start_point.point or item == graph.finish_point.point:
+            # TODO : надоб засплитить на разыне методы удаления
+            if item == graph.start_point.point or item == graph.finish_point.point or item == graph.arrow.line:
                 remove_flag = True
+
+                list_to_remove_graphs.append(graph)
 
                 # если удаляем по начальной вершине
                 if item == graph.start_point.point:
@@ -160,15 +165,21 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     list_to_remove_points.append(graph.start_point)
 
                 # если удаляем по конечной вершине
-                else:
+                elif item == graph.finish_point.point:
                     list_to_remove_arrows.append(graph.arrow)
                     list_to_remove_points.append(graph.finish_point)
 
-                list_to_remove_graphs.append(graph)
+                # удаляем стрелку
+                else:
+                    list_to_remove_arrows.append(graph.arrow)
+                    break
 
         # удаляем граф
         if remove_flag:
-            self.point_items.remove(list_to_remove_points[0])
+            # проврка для случая удаления не только стрелки
+            if list_to_remove_points:
+                self.point_items.remove(list_to_remove_points[0])
+
             for arrow in list_to_remove_arrows:
                 self.remove_arrow(arrow)
             for point in list_to_remove_points:
@@ -186,16 +197,17 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     # print('point deleted')
                     break
 
-    def remove_point(self, item: Point):
+    def remove_point(self, point: Point):
         """Удаление вершины"""
-        self.draw_scene.removeItem(item.point)
-        self.draw_scene.removeItem(item.label)
+        self.draw_scene.removeItem(point.point)
+        self.draw_scene.removeItem(point.label)
 
-    def remove_arrow(self, item: Arrow):
+    def remove_arrow(self, arrow: Arrow):
         """Удаление стрелки"""
-        self.draw_scene.removeItem(item.line)
-        self.draw_scene.removeItem(item.first_leaf)
-        self.draw_scene.removeItem(item.second_leaf)
+        self.draw_scene.removeItem(arrow.line)
+        self.draw_scene.removeItem(arrow.first_leaf)
+        self.draw_scene.removeItem(arrow.second_leaf)
+        self.draw_scene.removeItem(arrow.weight)
 
     def draw_circle(self, event):
         """Рисовние кргуа"""
@@ -223,7 +235,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 self.start_line_item = None
                 self.start_line_pos_x, self.start_line_pos_y = None, None
                 return
+
             sharp = 0.25  # острота стрелки
+
+            weight: int = random.randint(1, 30)
 
             x1 = self.start_line_pos_x
             y1 = self.start_line_pos_y
@@ -238,13 +253,16 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             line.setFlag(QGraphicsItem.ItemClipsChildrenToShape)
             self.draw_scene.addItem(line)
 
+            arrow_weight = self.get_arrow_weight(weight, line)
+            self.draw_scene.addItem(arrow_weight)
+
             x = x2 - x1
             y = y2 - y1
 
             # lons = sqrt(x * x + y * y) / 7  # длина лепестков % от длины стрелки
             angle = atan2(y, x)  # угол наклона линии
 
-            lons = 20
+            lons = 20  # noqa
 
             f1x2 = x2 - lons * cos(angle - sharp)
             f1y2 = y2 - lons * sin(angle - sharp)
@@ -262,7 +280,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             self.draw_scene.addItem(second_leaf)
 
             # создаём переменные для занесения их в граф
-            current_arrow = Arrow(line, firs_leaf, second_leaf)
+            current_arrow = Arrow(line, firs_leaf, second_leaf, arrow_weight)
             start_point = self.find_point_in_list(self.start_line_item)
             finish_point = self.find_point_in_list(item)
 
@@ -288,12 +306,17 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.current_text = text
         return text
 
+    def get_arrow_weight(self, weight: int, line: QGraphicsLineItem) -> QGraphicsTextItem:  # noqa
+        arrow_weight = QGraphicsTextItem(str(weight))
+        arrow_weight.setPos(line.line().center().x(),
+                            line.line().center().y() - 30)
+        return arrow_weight
+
     def get_item_under_mouse(self, t: Optional[Any] = None) -> Optional[Any]:
         """Получение итема под графом"""
-        item: QGraphicsItem
         for item in self.draw_scene.items():
             if item.isUnderMouse() and (isinstance(item, t) if t is not None else True):
-                # print(f'Item under mouse: {item}')
+                print(f'Item under mouse: {item}')
                 return item
 
     def find_point_in_list(self, item) -> Point:
@@ -308,6 +331,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         return center_x, center_y
 
     def chek_for_collisions(self, event):
+        pass
+
+    def update_table(self):
         pass
 
     def change_mod(self):
@@ -329,10 +355,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         # флаг для проверки удаления вершины из графа
         item = self.current_point.point
 
-        # листы на удалене итемов
-        list_to_redraw_points: List[Point] = []
-        list_to_redraw_arrows: List[Arrow] = []
-
         # пробегаем списко графоф
         for graph in self.graph_items:
             if item == graph.start_point.point or item == graph.finish_point.point:
@@ -341,12 +363,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 if item == graph.start_point.point:
                     # remove all except finish
                     self.redraw_arrow(graph.arrow, True)
-                    list_to_redraw_points.append(graph.start_point)
 
                 # если удаляем по конечной вершине
                 else:
                     self.redraw_arrow(graph.arrow, False)
-                    list_to_redraw_points.append(graph.finish_point)
 
     def redraw_arrow(self, arrow: Arrow, from_start: bool):
         sharp = 0.25  # острота стрелки
@@ -416,7 +436,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             lineCoords.setP2(QPointF(f1x2, f1y2))
             arrow.second_leaf.setLine(lineCoords)
 
-    def would_be_bidirectionality(self, item: QGraphicsItem)->bool:
+        arrow.weight.setPos(
+            arrow.line.line().center().x(),
+            arrow.line.line().center().y() - 30
+        )
+
+    def would_be_bidirectionality(self, item: QGraphicsItem) -> bool:  # noqa
         for graph in self.graph_items:
             if item == graph.start_point.point or item == graph.finish_point.point:
                 if self.start_line_item == graph.start_point.point or self.start_line_item == graph.finish_point.point:
@@ -429,11 +454,12 @@ def main():
     window.show()  # показываем окно
     app.exec_()  # запускаем приложение
 
+
 if __name__ == '__main__':
     main()
 
-# TODO : сделать удаление стрелок
-# TODO : подпись веса к стрелке
+# TODO : создание графа через заданные вершины
+# TODO : изменение вкса у стрелки
 # TODO : импорт/экспорт
 # TODO : динамическая перерисовка таблицы
 # TODO : методы из задания
