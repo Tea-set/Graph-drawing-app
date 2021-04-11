@@ -11,7 +11,8 @@ from PyQt5 import QtWidgets
 import sys
 
 from PyQt5.QtWidgets import QWidget, QApplication, QGraphicsScene, QGraphicsView, QGraphicsRectItem, QGraphicsItem, \
-    QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsLineItem, QGraphicsSceneEvent, QGraphicsTextItem
+    QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsLineItem, QGraphicsSceneEvent, QGraphicsTextItem, \
+    QTextEdit, QTableWidgetItem, QLineEdit
 from PyQt5.QtGui import QPainter, QColor, QFont, QMouseEvent, QCursor, QPen
 from PyQt5.QtCore import Qt, QRectF, QSizeF, QPointF, QLineF
 from PyQt5.uic.properties import QtCore
@@ -70,6 +71,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.start_line_item: QGraphicsLineItem = None
         self.current_text = None
         self.start_line_pos_x, self.start_line_pos_y = None, None
+        self.current_weight = None
 
         # ----------------------<Переопределенеия ивентов>----------------------
         self.draw_scene.mouseMoveEvent = lambda x: None
@@ -78,11 +80,16 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
 
         self.pushButton.clicked.connect(self.change_mod)
+        self.pushButton_2.clicked.connect(self.create_points_by_edit)
+        self.pushButton_3.clicked.connect(self.refresh_table)
 
         # ----------------------<Переменные для хранения данных графов>----------------------
         self.point_items: List[Point] = []
         self.graph_items: List[Graph] = []
         self.graph_names = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10']
+        self.hard_points_positions: List[QPointF] = [QPointF(135.0, 100.0), QPointF(725.0, 100.0), QPointF(135.0, 175.0), QPointF(725.0, 175.0),
+                                                     QPointF(275.0, 60.0), QPointF(425.0, 60.0), QPointF(575.0, 60.0),
+                                                     QPointF(275.0, 200.0), QPointF(425.0, 200.0), QPointF(575.0, 200.0)]
 
         self.current_graph: Graph
         self.current_start_point: Point
@@ -94,10 +101,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         if event.button() == Qt.LeftButton:  # noqa
             item: QGraphicsItem = self.get_item_under_mouse(QGraphicsEllipseItem)
             if not item:
-                self.draw_circle(event)
+                self.draw_circle(event.scenePos().x(), event.scenePos().y())
             else:
                 self.current_point: Point = self.find_point_in_list(item)
-                print(self.current_point.point.pos())
+                # print(self.current_point.point.pos())
                 self.current_point.point.setBrush(Qt.yellow)
                 self.draw_scene.mouseMoveEvent = self.myMouseMoveEvent
                 self.draw_scene.mouseReleaseEvent = self.scene_move_mouse_release_event  # print(item.pos())
@@ -209,13 +216,13 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.draw_scene.removeItem(arrow.second_leaf)
         self.draw_scene.removeItem(arrow.weight)
 
-    def draw_circle(self, event):
+    def draw_circle(self, x_pos, y_pos):
         """Рисовние кргуа"""
         if not len(self.point_items) >= 10:
             ellipse_item = QGraphicsEllipseItem(QRectF(0, 0, self.ellipse_diameter, self.ellipse_diameter))
             ellipse_item.setBrush(Qt.red)
-            x_pos = event.scenePos().x() - self.ellipse_diameter / 2
-            y_pos = event.scenePos().y() - self.ellipse_diameter / 2
+            x_pos -= self.ellipse_radius
+            y_pos -=  self.ellipse_radius
             # print(x_pos, y_pos)
             # print('-' * 11)
             ellipse_item.setPos(x_pos, y_pos)
@@ -300,8 +307,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def get_graph_name(self, x, y):
         """Получение подписи к вершине"""
         text = QGraphicsTextItem(self.graph_names[len(self.point_items)])
-        x_pos = x + self.ellipse_diameter / 2
-        y_pos = y - self.ellipse_diameter / 2 - 5
+        x_pos = x + self.ellipse_radius
+        y_pos = y - self.ellipse_radius - 5
         text.setPos(x_pos, y_pos)
         self.current_text = text
         return text
@@ -316,7 +323,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         """Получение итема под графом"""
         for item in self.draw_scene.items():
             if item.isUnderMouse() and (isinstance(item, t) if t is not None else True):
-                print(f'Item under mouse: {item}')
+                # print(f'Item under mouse: {item}')
                 return item
 
     def find_point_in_list(self, item) -> Point:
@@ -326,8 +333,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
     def get_circle_center(self, item: QGraphicsItem):
         """Поулчение координат центра круга"""
-        center_x = item.pos().x() + self.ellipse_diameter / 2
-        center_y = item.pos().y() + self.ellipse_diameter / 2
+        center_x = item.pos().x() + self.ellipse_radius
+        center_y = item.pos().y() + self.ellipse_radius
         return center_x, center_y
 
     def chek_for_collisions(self, event):
@@ -347,6 +354,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         if event.button() == Qt.RightButton:
             item = self.get_item_under_mouse()
             self.remove_items(item)
+        elif event.button() == Qt.LeftButton:
+            print(self.get_item_under_mouse().type())
 
     # TODO : тут такой бред в плане логики функций, надоб исправить
     def redraw_items(self):
@@ -448,6 +457,58 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     return True
             return False
 
+    def create_points_by_edit(self):
+        for item in self.draw_scene.items():
+            self.draw_scene.removeItem(item)
+        self.point_items = []
+        self.graph_items = []
+        for i in range(int(self.spinBox.text())):
+            self.draw_circle(self.hard_points_positions[i].x(), self.hard_points_positions[i].y())
+
+    def change_weight(self, weight: QGraphicsTextItem):
+        for graph in self.graph_items:
+            if weight == graph.arrow.weight:
+                edit = QTextEdit(weight.toPlainText())
+        pass
+
+    def refresh_table(self):
+        for i in range(0, self.tableWidget.columnCount()):
+            for j in range(0, self.tableWidget.rowCount()):
+                cell_item = QTableWidgetItem()
+                cell_item.setText('')
+                self.tableWidget.setItem(i,j,cell_item)
+
+        for i in range(0, len(self.point_items)):
+            for j in range(0, len(self.point_items)):
+                cell_item = QTableWidgetItem()
+                cell_item.setText('0')
+                self.tableWidget.setItem(i, j, cell_item)
+
+        for graph in self.graph_items:
+            col = self.label_to_int(graph.start_point.label) - 1
+            row = self.label_to_int(graph.finish_point.label) - 1
+            cell_item = QTableWidgetItem()
+            cell_item.setText(graph.arrow.weight.toPlainText())
+            self.tableWidget.setItem(col, row, cell_item)
+
+    def label_to_int(self, lavel: QGraphicsTextItem) -> int:
+        label_text = lavel.toPlainText()
+        label_text = label_text.replace('X', '')
+        label_int = int(label_text)
+        return label_int
+
+    # def create_label_on_line(self, weight: QGraphicsTextItem):
+    #     for graph in self.graph_items:
+    #         if weight == graph.arrow.weight:
+    #             edit = QLineEdit()
+    #             edit.setText(weight.toPlainText())
+    #             edit.setParent(self)
+    #             edit.setGeometry(int(weight.pos().x()), int(weight.pos().y()), 20, 30)
+    #             edit.setMaxLength(2)
+    #             edit.show()
+    #
+    #             self.current_weight = weight.toPlainText()
+
 def main():
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = GUI()  # создаём объект класса приложения
@@ -458,8 +519,9 @@ def main():
 if __name__ == '__main__':
     main()
 
-# TODO : создание графа через заданные вершины
-# TODO : изменение вкса у стрелки
+# TODO : изменение веса у стрелки
 # TODO : импорт/экспорт
-# TODO : динамическая перерисовка таблицы
 # TODO : методы из задания
+# TODO : проверка на коллизии
+# TODO : раскидать функцию обновления таблицы
+# TODO : сделать изменение веса на зименение в таблице
