@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import csv
+from pandas._libs.internals import defaultdict
 from datetime import time
 from math import cos, sin, atan2, sqrt
 import random
@@ -16,6 +18,153 @@ from PyQt5.QtWidgets import QWidget, QApplication, QGraphicsScene, QGraphicsView
 from PyQt5.QtGui import QPainter, QColor, QFont, QMouseEvent, QCursor, QPen
 from PyQt5.QtCore import Qt, QRectF, QSizeF, QPointF, QLineF
 from PyQt5.uic.properties import QtCore
+
+
+class Node:
+
+    def __init__(self, data, indexloc=None):
+        self.data = data
+        self.index = indexloc
+
+
+class Graph_d:
+
+    @classmethod
+    def create_from_nodes(self, nodes):
+        return Graph_d(len(nodes), len(nodes), nodes)
+
+    def __init__(self, row, col, nodes=None):
+        # установка матрица смежности
+        self.adj_mat = [[0] * col for _ in range(row)]
+        self.nodes = nodes
+        for i in range(len(self.nodes)):
+            self.nodes[i].index = i
+
+    # Связывает node1 с node2
+    # Обратите внимание, что ряд - источник, а столбец - назначение
+    # Обновлен для поддержки взвешенных ребер (поддержка алгоритма Дейкстры)
+    def connect_dir(self, node1, node2, weight=1):
+        node1, node2 = self.get_index_from_node(node1), self.get_index_from_node(node2)
+        self.adj_mat[node1][node2] = weight
+
+    # Опциональный весовой аргумент для поддержки алгоритма Дейкстры
+    def connect(self, node1, node2, weight=1):
+        self.connect_dir(node1, node2, weight)
+        # self.connect_dir(node2, node1, weight)
+
+    # Получает ряд узла, отметить ненулевые объекты с их узлами в массиве self.nodes
+    # Выбирает любые ненулевые элементы, оставляя массив узлов
+    # которые являются connections_to (для ориентированного графа)
+    # Возвращает значение: массив кортежей (узел, вес)
+    def connections_from(self, node):
+        node = self.get_index_from_node(node)
+        return [(self.nodes[col_num], self.adj_mat[node][col_num]) for col_num in range(len(self.adj_mat[node])) if
+                self.adj_mat[node][col_num] != 0]
+
+    # Проводит матрицу к столбцу узлов
+    # Проводит любые ненулевые элементы узлу данного индекса ряда
+    # Выбирает только ненулевые элементы
+    # Обратите внимание, что для неориентированного графа
+    # используется connections_to ИЛИ connections_from
+    # Возвращает значение: массив кортежей (узел, вес)
+    def connections_to(self, node):
+        node = self.get_index_from_node(node)
+        column = [row[node] for row in self.adj_mat]
+        return [(self.nodes[row_num], column[row_num]) for row_num in range(len(column)) if column[row_num] != 0]
+
+    def print_adj_mat(self):
+        for row in self.adj_mat:
+            print(row)
+
+    def node(self, index):
+        return self.nodes[index]
+
+    def remove_conn(self, node1, node2):
+        # self.remove_conn_dir(node1, node2)
+        self.remove_conn_dir(node2, node1)
+
+    # Убирает связь в направленной манере (nod1 к node2)
+    # Может принять номер индекса ИЛИ объект узла
+    def remove_conn_dir(self, node1, node2):
+        node1, node2 = self.get_index_from_node(node1), self.get_index_from_node(node2)
+        self.adj_mat[node1][node2] = 0
+
+        # Может пройти от node1 к node2
+
+    def can_traverse_dir(self, node1, node2):
+        node1, node2 = self.get_index_from_node(node1), self.get_index_from_node(node2)
+        return self.adj_mat[node1][node2] != 0
+
+    def has_conn(self, node1, node2):
+        return self.can_traverse_dir(node1, node2) or self.can_traverse_dir(node2, node1)
+
+    def add_node(self, node):
+        self.nodes.append(node)
+        node.index = len(self.nodes) - 1
+        for row in self.adj_mat:
+            row.append(0)
+        self.adj_mat.append([0] * (len(self.adj_mat) + 1))
+
+    # Получает вес, представленный перемещением от n1
+    # к n2. Принимает номера индексов ИЛИ объекты узлов
+    def get_weight(self, n1, n2):
+        node1, node2 = self.get_index_from_node(n1), self.get_index_from_node(n2)
+        return self.adj_mat[node1][node2]
+
+    # Разрешает проводить узлы ИЛИ индексы узлов
+    def get_index_from_node(self, node):
+        if not isinstance(node, Node) and not isinstance(node, int):
+            raise ValueError("node must be an integer or a Node object")
+        if isinstance(node, int):
+            return node
+        else:
+            return node.index
+
+    def dijkstra(self, node):
+        # Получает индекс узла (или поддерживает передачу int)
+        nodenum = self.get_index_from_node(node)
+        # Заставляет массив отслеживать расстояние от одного до любого узла
+        # в self.nodes. Инициализирует до бесконечности для всех узлов, кроме
+        # начального узла, сохраняет "путь", связанный с расстоянием.
+        # Индекс 0 = расстояние, индекс 1 = перескоки узла
+        dist = [None] * len(self.nodes)
+        for i in range(len(dist)):
+            dist[i] = [float("inf")]
+            dist[i].append([self.nodes[nodenum]])
+
+        dist[nodenum][0] = 0
+        # Добавляет в очередь все узлы графа
+        # Отмечает целые числа в очереди, соответствующие индексам узла
+        # локаций в массиве self.nodes
+        queue = [i for i in range(len(self.nodes))]
+        # Набор увиденных на данный момент номеров
+        seen = set()
+        while len(queue) > 0:
+            # Получает узел в очереди, который еще не был рассмотрен
+            # и который находится на кратчайшем расстоянии от источника
+            min_dist = float("inf")
+            min_node = None
+            for n in queue:
+                if dist[n][0] < min_dist and n not in seen:
+                    min_dist = dist[n][0]
+                    min_node = n
+
+            # Добавляет мин. расстояние узла до увиденного, убирает очередь
+
+            queue.remove(min_node)
+            seen.add(min_node)
+            # Получает все следующие перескоки
+            connections = self.connections_from(min_node)
+            # Для каждой связи обновляет путь и полное расстояние от
+            # исходного узла, если полное расстояние меньше
+            # чем текущее расстояние в массиве dist
+            for (node, weight) in connections:
+                tot_dist = weight + min_dist
+                if tot_dist < dist[node.index][0]:
+                    dist[node.index][0] = tot_dist
+                    dist[node.index][1] = list(dist[min_node][1])
+                    dist[node.index][1].append(node)
+        return dist
 
 
 def log_uncaught_exceptions(ex_cls, ex, tb):
@@ -59,8 +208,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         # ----------------------<Настройка сцены для рисования>----------------------
         self.draw_scene = QGraphicsScene(self.frame)
         self.view = QGraphicsView(self.draw_scene, self)
-        self.view.setGeometry(self.frame.pos().x(), self.frame.pos().y(), 840, 250)
-        self.view.setSceneRect(self.frame.pos().x(), self.frame.pos().y(), 840, 250)
+        self.view.setGeometry(self.frame.pos().x(), self.frame.pos().y(), 890, 290)
+        self.view.setSceneRect(self.frame.pos().x(), self.frame.pos().y(), 890, 290)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
@@ -72,6 +221,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.current_text = None
         self.start_line_pos_x, self.start_line_pos_y = None, None
         self.current_weight = None
+        self.min_way = None
 
         # ----------------------<Переопределенеия ивентов>----------------------
         self.draw_scene.mouseMoveEvent = lambda x: None
@@ -81,17 +231,28 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         self.pushButton.clicked.connect(self.change_mod)
         self.pushButton_2.clicked.connect(self.create_points_by_edit)
-        self.pushButton_3.clicked.connect(self.refresh_table)
+        self.pushButton_3.clicked.connect(self.dijkstra_method)
+
+        self.actionexport_to_csv.triggered.connect(self.export_form_csv)
+        self.actionimport_form_csv.triggered.connect(self.import_form_csv)
 
         # ----------------------<Переменные для хранения данных графов>----------------------
+        self.nodes = set()
+        self.edges = defaultdict(list)
+        self.distances = {}
+
         self.point_items: List[Point] = []
         self.graph_items: List[Graph] = []
         self.graph_names = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10']
-        self.hard_points_positions: List[QPointF] = [QPointF(135.0, 100.0), QPointF(725.0, 100.0), QPointF(135.0, 175.0), QPointF(725.0, 175.0),
+        self.hard_points_positions: List[QPointF] = [QPointF(135.0, 100.0), QPointF(725.0, 100.0),
+                                                     QPointF(135.0, 175.0), QPointF(725.0, 175.0),
                                                      QPointF(275.0, 60.0), QPointF(425.0, 60.0), QPointF(575.0, 60.0),
-                                                     QPointF(275.0, 200.0), QPointF(425.0, 200.0), QPointF(575.0, 200.0)]
+                                                     QPointF(275.0, 200.0), QPointF(425.0, 200.0),
+                                                     QPointF(575.0, 200.0)]
 
+        self.refresh_mode = True
         self.current_graph: Graph
+        self.last_drawn_point: Point
         self.current_start_point: Point
         self.current_finish_point: Point
         self.item = None
@@ -123,9 +284,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         # self.current_item.setBrush(Qt.yellow)
         item: QGraphicsEllipseItem = self.current_point.point
         lable: QGraphicsTextItem = self.current_point.label
-
-        item_x = item.rect().x()
-        item_y = item.rect().y()
 
         # здесь мы отнимаем ещё и радиус точки, чтобы создавалось ощущение, что курсор тянет точку за центр
         item.setPos(
@@ -204,6 +362,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     # print('point deleted')
                     break
 
+        self.refresh_table()
+
     def remove_point(self, point: Point):
         """Удаление вершины"""
         self.draw_scene.removeItem(point.point)
@@ -216,23 +376,27 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.draw_scene.removeItem(arrow.second_leaf)
         self.draw_scene.removeItem(arrow.weight)
 
-    def draw_circle(self, x_pos, y_pos):
+    def draw_circle(self, x_pos, y_pos, name: str = None):
         """Рисовние кргуа"""
         if not len(self.point_items) >= 10:
             ellipse_item = QGraphicsEllipseItem(QRectF(0, 0, self.ellipse_diameter, self.ellipse_diameter))
             ellipse_item.setBrush(Qt.red)
             x_pos -= self.ellipse_radius
-            y_pos -=  self.ellipse_radius
+            y_pos -= self.ellipse_radius
             # print(x_pos, y_pos)
             # print('-' * 11)
             ellipse_item.setPos(x_pos, y_pos)
             ellipse_item.setFlag(QGraphicsItem.ItemIsMovable)
             self.draw_scene.addItem(ellipse_item)
-            text = self.get_graph_name(x_pos, y_pos)
+            text = self.get_graph_name(x_pos, y_pos, name)
             self.draw_scene.addItem(text)
-            self.point_items.append(Point(ellipse_item, text))
+            point = Point(ellipse_item, text)
+            self.point_items.append(point)
+            self.last_drawn_point = point
+            if self.refresh_mode:
+                self.refresh_table()
 
-    def draw_arrow(self, item: QGraphicsItem):
+    def draw_arrow(self, item: QGraphicsItem, weight: int = None):
         """Рисовние стрелок"""
         if self.start_line_pos_x:
 
@@ -245,7 +409,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
             sharp = 0.25  # острота стрелки
 
-            weight: int = random.randint(1, 30)
+            if not weight:
+                weight: int = random.randint(1, 10)
 
             x1 = self.start_line_pos_x
             y1 = self.start_line_pos_y
@@ -295,6 +460,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             self.current_graph = Graph(start_point, finish_point, current_arrow)  # noqa
             self.graph_items.append(self.current_graph)
 
+            if self.refresh_mode:
+                self.refresh_table()
+
             # зануливаем позиции, для возможности отрисовки стрелки снова
             self.start_line_item = None
             self.start_line_pos_x, self.start_line_pos_y = None, None
@@ -304,9 +472,13 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             self.start_line_item = item
             self.start_line_pos_x, self.start_line_pos_y = self.get_circle_center(item)
 
-    def get_graph_name(self, x, y):
+    def get_graph_name(self, x, y, name: str = None):
         """Получение подписи к вершине"""
-        text = QGraphicsTextItem(self.graph_names[len(self.point_items)])
+        if name:
+            text = QGraphicsTextItem(name)
+        else:
+            # TODO : метод подбора имени точки
+            text = QGraphicsTextItem(self.graph_names[len(self.point_items)])
         x_pos = x + self.ellipse_radius
         y_pos = y - self.ellipse_radius - 5
         text.setPos(x_pos, y_pos)
@@ -346,18 +518,22 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def change_mod(self):
         """Переключение в режим удаления"""
         if self.draw_scene.mousePressEvent == self.myMousePressCreateEvent:
+            self.pushButton.setStyleSheet("color:green")
             self.draw_scene.mousePressEvent = self.mouseRemoveItemEvent
         else:
             self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
+            self.pushButton.setStyleSheet("color:black")
 
     def mouseRemoveItemEvent(self, event):
         if event.button() == Qt.RightButton:
             item = self.get_item_under_mouse()
             self.remove_items(item)
         elif event.button() == Qt.LeftButton:
+            item = self.get_item_under_mouse()
+            if item.type() == 8:
+                self.create_label_on_line(item)
             print(self.get_item_under_mouse().type())
 
-    # TODO : тут такой бред в плане логики функций, надоб исправить
     def redraw_items(self):
         """Удаление элементов"""
 
@@ -376,6 +552,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 # если удаляем по конечной вершине
                 else:
                     self.redraw_arrow(graph.arrow, False)
+
+            graph.start_point.point.setBrush(Qt.red)
+            pen = QPen(Qt.black, 2)
+            graph.arrow.line.setPen(pen)
+            graph.arrow.first_leaf.setPen(pen)
+            graph.arrow.second_leaf.setPen(pen)
 
     def redraw_arrow(self, arrow: Arrow, from_start: bool):
         sharp = 0.25  # острота стрелки
@@ -457,29 +639,32 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     return True
             return False
 
-    def create_points_by_edit(self):
+    def clear_scene(self):
         for item in self.draw_scene.items():
             self.draw_scene.removeItem(item)
         self.point_items = []
         self.graph_items = []
+
+    def create_points_by_edit(self):
+        self.clear_scene()
         for i in range(int(self.spinBox.text())):
             self.draw_circle(self.hard_points_positions[i].x(), self.hard_points_positions[i].y())
-
-    def change_weight(self, weight: QGraphicsTextItem):
-        for graph in self.graph_items:
-            if weight == graph.arrow.weight:
-                edit = QTextEdit(weight.toPlainText())
-        pass
+        self.refresh_table()
 
     def refresh_table(self):
         for i in range(0, self.tableWidget.columnCount()):
             for j in range(0, self.tableWidget.rowCount()):
                 cell_item = QTableWidgetItem()
                 cell_item.setText('')
-                self.tableWidget.setItem(i,j,cell_item)
+                self.tableWidget.setItem(i, j, cell_item)
 
-        for i in range(0, len(self.point_items)):
-            for j in range(0, len(self.point_items)):
+        max_label_index = 0
+        for point in self.point_items:
+            if self.label_to_int(point.label) > max_label_index:
+                max_label_index = self.label_to_int(point.label)
+
+        for i in range(0, max_label_index):
+            for j in range(0, max_label_index):
                 cell_item = QTableWidgetItem()
                 cell_item.setText('0')
                 self.tableWidget.setItem(i, j, cell_item)
@@ -497,17 +682,194 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         label_int = int(label_text)
         return label_int
 
-    # def create_label_on_line(self, weight: QGraphicsTextItem):
-    #     for graph in self.graph_items:
-    #         if weight == graph.arrow.weight:
-    #             edit = QLineEdit()
-    #             edit.setText(weight.toPlainText())
-    #             edit.setParent(self)
-    #             edit.setGeometry(int(weight.pos().x()), int(weight.pos().y()), 20, 30)
-    #             edit.setMaxLength(2)
-    #             edit.show()
-    #
-    #             self.current_weight = weight.toPlainText()
+    def create_label_on_line(self, weight: QGraphicsTextItem):
+        for graph in self.graph_items:
+            if weight == graph.arrow.weight:
+                edit = QLineEdit()
+                edit.setText(weight.toPlainText())
+                edit.setParent(self)
+                edit.setGeometry(int(weight.pos().x()), int(weight.pos().y()), 20, 30)
+                edit.setMaxLength(2)
+
+                self.current_weight = weight.toPlainText()
+                self.default_key_press_event = edit.keyPressEvent
+                edit.keyPressEvent == self.line_edit_release_key_event
+
+                edit.show()
+
+    def line_edit_release_key_event(self, event):
+        if event.key == Qt.key_enter:
+            print('some ')
+
+    def import_form_csv(self, path="graph.csv"):
+        j = 0
+        with open('graph.csv', encoding="utf-8") as class_file:
+            file_reader = csv.reader(class_file, delimiter=",")
+            for row in file_reader:
+                for i in range(0, len(row)):
+                    cell_item = QTableWidgetItem()
+                    cell_item.setText(row[i])
+                    self.tableWidget.setItem(j, i, cell_item)
+                j += 1
+        self.create_graph_by_table()
+
+    def export_form_csv(self, path='graph.csv'):
+        names = self.graph_names
+        if len(self.point_items) == 0:
+            return
+        with open(path, mode="w", encoding="utf-8") as graph_file:
+            file_writer = csv.DictWriter(graph_file, delimiter=",", lineterminator="\r", fieldnames=names)
+
+            rows = self.tableWidget.rowCount()
+            cols = self.tableWidget.columnCount()
+            for row in range(rows):
+                data = []
+                for col in range(cols):
+                    text = self.tableWidget.item(row, col).text()
+                    if text != '':
+                        data.append(self.tableWidget.item(row, col).text())
+                    else:
+                        data.append('')
+                while len(data) != 10:
+                    data.append('')
+                dictionary = dict(zip(self.graph_names, data))
+                file_writer.writerow(dictionary)
+
+    def create_graph_by_table(self):
+        self.clear_scene()
+
+        self.refresh_mode = False
+
+        for i in range(0, 10):
+            for j in range(0, 10):
+                if self.tableWidget.item(i, j).text() != '' and self.tableWidget.item(i, j).text() != '0':
+
+                    # print(' ', self.tableWidget.item(i, j).text(), end = ' ')
+                    name = "X" + str(i + 1)
+                    # print(name)
+                    crate_name_key = True
+                    for point in self.point_items:
+                        if name == point.label.toPlainText():
+                            crate_name_key = False
+                    if crate_name_key:
+                        self.draw_circle(self.hard_points_positions[i].x(), self.hard_points_positions[i].y(), name)
+
+                    for point in self.point_items:
+                        if name == point.label.toPlainText():
+                            start_point = point
+                            break
+
+                    name = "X" + str(j + 1)
+                    crate_name_key = True
+                    for point in self.point_items:
+                        if name == point.label.toPlainText():
+                            crate_name_key = False
+                    if crate_name_key:
+                        self.draw_circle(self.hard_points_positions[j].x(), self.hard_points_positions[j].y(), name)
+
+                    for point in self.point_items:
+                        if name == point.label.toPlainText():
+                            finish_point = point
+                            break
+
+                    self.start_line_item = start_point.point
+                    self.start_line_pos_x, self.start_line_pos_y = self.get_circle_center(self.start_line_item)
+                    self.draw_arrow(finish_point.point, int(self.tableWidget.item(i, j).text()))
+
+        self.refresh_mode = True
+
+    def dijkstra_method(self):
+        if self.spinBox_2.text() == self.spinBox_3.text():
+            text = "Начальная и конечная вершины соввпадают"
+            self.textBrowser.setText(text)
+            return
+
+        key_in_start = False
+        key_in_fining = False
+        for graph in self.graph_items:
+            if graph.start_point.label.toPlainText().replace('X','') == self.spinBox_2.text():
+                key_in_start = True
+            if graph.finish_point.label.toPlainText().replace('X','') == self.spinBox_3.text():
+                key_in_fining = True
+
+        if not key_in_start or not key_in_fining:
+            text = "Выбраны неверные вершины"
+            self.textBrowser.setText(text)
+            return
+
+        node_list = []
+        for name in self.graph_names:
+            for point in self.point_items:
+                if name == point.label.toPlainText():
+                    node_list.append(Node(point.label.toPlainText()))
+        # TODO : обработать начальную вершину
+        w_graph = Graph_d.create_from_nodes(node_list)
+
+        for i in range(0, 10):
+            for j in range(0, 10):
+                if self.tableWidget.item(i, j).text() != '' and self.tableWidget.item(i, j).text() != '0':
+                    # print(' ', self.tableWidget.item(i, j).text(), end = ' ')
+                    start_point = node_list[i]
+                    finish_point = node_list[j]
+                    weight = int(self.tableWidget.item(i, j).text())
+
+                    w_graph.connect(start_point, finish_point, weight)
+
+        min_ways = w_graph.dijkstra(node_list[int(self.spinBox_2.text()) - 1])
+        # str = ([(weight, [n.data for n in node]) for (weight, node) in min_ways])
+        # print(str)
+
+        nodes = []
+        weights = []
+        for (weight, node) in min_ways:
+            temp = []
+            for n in node:
+                temp.append(n.data)
+            weights.append(weight)
+            nodes.append(temp)
+        self.textBrowser.setText('')
+
+        min_way = nodes[int(self.spinBox_3.text())-1]
+        min_wei = weights[int(self.spinBox_3.text())-1]
+
+        str_l = []
+
+        for el in min_way:
+            str_l.append(el)
+            str_l.append('->')
+        str_l.pop()
+
+        str_out = str(min_wei) + ' : '
+        for s in str_l:
+            str_out += s
+
+        self.textBrowser.setText(str_out)
+        self.paint_graph_by_min_way(min_way)
+
+    def paint_graph_by_min_way(self, min_way):
+        """Выделяет минимальный путь"""
+        self.draw_default()
+
+        for i in range(0, len(min_way)-1):
+            for graph in self.graph_items:
+                if min_way[i] == graph.start_point.label.toPlainText() and min_way[i+1] == graph.finish_point.label.toPlainText():
+                    graph.start_point.point.setBrush(Qt.blue)
+                    graph.finish_point.point.setBrush(Qt.blue)
+                    pen = QPen(Qt.red, 4)
+                    graph.arrow.line.setPen(pen)
+                    graph.arrow.first_leaf.setPen(pen)
+                    graph.arrow.second_leaf.setPen(pen)
+
+    def draw_default(self):
+        """Красит граф в нормальные цывета"""
+        for graph in self.graph_items:
+            graph.start_point.point.setBrush(Qt.red)
+            graph.finish_point.point.setBrush(Qt.red)
+            pen = QPen(Qt.black, 2)
+            graph.arrow.line.setPen(pen)
+            graph.arrow.first_leaf.setPen(pen)
+            graph.arrow.second_leaf.setPen(pen)
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
@@ -520,8 +882,7 @@ if __name__ == '__main__':
     main()
 
 # TODO : изменение веса у стрелки
-# TODO : импорт/экспорт
-# TODO : методы из задания
+# TODO : сделать изменение веса на изменение в таблице
+
+# TODO : сделать метод на выбор имён для вершин
 # TODO : проверка на коллизии
-# TODO : раскидать функцию обновления таблицы
-# TODO : сделать изменение веса на зименение в таблице

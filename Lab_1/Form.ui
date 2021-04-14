@@ -17,10 +17,10 @@
    <widget class="QFrame" name="frame">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>10</x>
       <y>30</y>
-      <width>841</width>
-      <height>251</height>
+      <width>891</width>
+      <height>301</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -33,7 +33,7 @@
    <widget class="QTableWidget" name="tableWidget">
     <property name="geometry">
      <rect>
-      <x>460</x>
+      <x>480</x>
       <y>340</y>
       <width>421</width>
       <height>251</height>
@@ -174,9 +174,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>330</y>
-      <width>231</width>
-      <height>121</height>
+      <y>450</y>
+      <width>251</width>
+      <height>131</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -208,14 +208,111 @@
      <item>
       <widget class="QPushButton" name="pushButton_3">
        <property name="text">
-        <string>Метод 1</string>
+        <string>Метод Дейкстры</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_4">
        <property name="text">
-        <string>Метод 2</string>
+        <string>Метод Флойда</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>290</x>
+      <y>340</y>
+      <width>181</width>
+      <height>251</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Поиск кратчайшего пути между</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Start : X</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="spinBox_2">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>9</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Finisg : X</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="spinBox_3">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>9</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QTextBrowser" name="textBrowser"/>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>340</y>
+      <width>205</width>
+      <height>56</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Режим: стандартный</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>ЛКМ - передвинуть / добавить вершину</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>ПКМ - нарисовать стрелку</string>
        </property>
       </widget>
      </item>
@@ -228,17 +325,29 @@
      <x>0</x>
      <y>0</y>
      <width>914</width>
-     <height>22</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuSome_text">
     <property name="title">
-     <string>Some text</string>
+     <string>Save/Load</string>
     </property>
+    <addaction name="actionexport_to_csv"/>
+    <addaction name="actionimport_form_csv"/>
    </widget>
    <addaction name="menuSome_text"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionexport_to_csv">
+   <property name="text">
+    <string>export to csv</string>
+   </property>
+  </action>
+  <action name="actionimport_form_csv">
+   <property name="text">
+    <string>import from csv</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
