@@ -9,7 +9,6 @@ from typing import Optional, Any, List
 from Lab_1.Dijkstra import Node
 from Lab_1.Dijkstra import Graph as Graph_d
 
-
 from Lab_1 import Form
 
 from PyQt5 import QtWidgets
@@ -92,6 +91,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.actionexport_to_csv.triggered.connect(self.export_form_csv)
         self.actionimport_form_csv.triggered.connect(self.import_form_csv)
 
+        self.tableWidget.cellChanged.connect(self.change_table)
+
         # ----------------------<Переменные для хранения данных графов>----------------------
         self.nodes = set()
         self.edges = defaultdict(list)
@@ -135,6 +136,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     self.start_line_item.setBrush(Qt.red)
                     self.start_line_item = None
                 self.start_line_pos_x, self.start_line_pos_y = None, None
+
+        elif event.button() == Qt.MiddleButton:
+            item = self.get_item_under_mouse()
+            self.remove_items(item)
 
     def myMouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         # self.current_item.setBrush(Qt.yellow)
@@ -366,10 +371,26 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         return center_x, center_y
 
     def chek_for_collisions(self, event):
+        # TODO : доделать
         pass
 
-    def update_table(self):
-        pass
+    def change_table(self, row_pos: int, col_pos: int):
+
+        if self.refresh_mode:
+            for graph in self.graph_items:
+                if self.label_to_int(graph.start_point.label) == row_pos + 1 and \
+                        self.label_to_int(graph.finish_point.label) == col_pos + 1:
+                    weight_int = self.tableWidget.item(row_pos, col_pos).text()
+                    if weight_int == '':
+                        weight_int = 0
+                    else:
+                        weight_int = int(weight_int)
+                    self.draw_scene.removeItem(graph.arrow.weight)
+                    weight = self.get_arrow_weight(weight_int, graph.arrow.line)
+                    graph.arrow.weight = weight
+                    self.draw_scene.addItem(weight)
+
+                    return
 
     def change_mod(self):
         """Переключение в режим удаления"""
@@ -508,6 +529,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.refresh_table()
 
     def refresh_table(self):
+        self.refresh_mode = False
         for i in range(0, self.tableWidget.columnCount()):
             for j in range(0, self.tableWidget.rowCount()):
                 cell_item = QTableWidgetItem()
@@ -532,13 +554,16 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             cell_item.setText(graph.arrow.weight.toPlainText())
             self.tableWidget.setItem(col, row, cell_item)
 
-    def label_to_int(self, lavel: QGraphicsTextItem) -> int:
-        label_text = lavel.toPlainText()
+        self.refresh_mode = True
+
+    def label_to_int(self, label: QGraphicsTextItem) -> int:  # noqa
+        label_text = label.toPlainText()
         label_text = label_text.replace('X', '')
         label_int = int(label_text)
         return label_int
 
     def create_label_on_line(self, weight: QGraphicsTextItem):
+        # TODO : доделать
         for graph in self.graph_items:
             if weight == graph.arrow.weight:
                 edit = QLineEdit()
@@ -554,6 +579,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 edit.show()
 
     def line_edit_release_key_event(self, event):
+        # TODO : доделать
         if event.key == Qt.key_enter:
             print('some ')
 
@@ -643,9 +669,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         key_in_start = False
         key_in_fining = False
         for graph in self.graph_items:
-            if graph.start_point.label.toPlainText().replace('X','') == self.spinBox_2.text():
+            if self.label_to_int(graph.start_point.label) == int(self.spinBox_2.text()):
                 key_in_start = True
-            if graph.finish_point.label.toPlainText().replace('X','') == self.spinBox_3.text():
+            if self.label_to_int(graph.finish_point.label) == int(self.spinBox_3.text()):
                 key_in_fining = True
 
         if not key_in_start or not key_in_fining:
@@ -686,8 +712,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             nodes.append(temp)
         self.textBrowser.setText('')
 
-        min_way = nodes[int(self.spinBox_3.text())-1]
-        min_wei = weights[int(self.spinBox_3.text())-1]
+        min_way = nodes[int(self.spinBox_3.text()) - 1]
+        min_wei = weights[int(self.spinBox_3.text()) - 1]
 
         str_l = []
 
@@ -707,9 +733,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         """Выделяет минимальный путь"""
         self.draw_default()
 
-        for i in range(0, len(min_way)-1):
+        for i in range(0, len(min_way) - 1):
             for graph in self.graph_items:
-                if min_way[i] == graph.start_point.label.toPlainText() and min_way[i+1] == graph.finish_point.label.toPlainText():
+                if min_way[i] == graph.start_point.label.toPlainText() and \
+                        min_way[i + 1] == graph.finish_point.label.toPlainText():
                     graph.start_point.point.setBrush(Qt.blue)
                     graph.finish_point.point.setBrush(Qt.blue)
                     pen = QPen(Qt.red, 4)
@@ -739,7 +766,6 @@ if __name__ == '__main__':
     main()
 
 # TODO : изменение веса у стрелки
-# TODO : сделать изменение веса на изменение в таблице
 
 # TODO : сделать метод на выбор имён для вершин
 # TODO : проверка на коллизии
