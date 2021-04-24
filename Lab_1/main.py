@@ -91,7 +91,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.actionexport_to_csv.triggered.connect(self.export_form_csv)
         self.actionimport_form_csv.triggered.connect(self.import_form_csv)
 
-        self.tableWidget.cellChanged.connect(self.change_table)
+        self.tableWidget.cellChanged.connect(self.change_table_event)
 
         # ----------------------<Переменные для хранения данных графов>----------------------
         self.nodes = set()
@@ -107,6 +107,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                                                      QPointF(275.0, 200.0), QPointF(425.0, 200.0),
                                                      QPointF(575.0, 200.0)]
 
+        self.arrow_weight_edit = None
+
         self.refresh_mode = True
         self.current_graph: Graph
         self.last_drawn_point: Point
@@ -117,15 +119,20 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
     def myMousePressCreateEvent(self, event):
         if event.button() == Qt.LeftButton:  # noqa
-            item: QGraphicsItem = self.get_item_under_mouse(QGraphicsEllipseItem)
+            item = self.get_item_under_mouse()
             if not item:
                 self.draw_circle(event.scenePos().x(), event.scenePos().y())
             else:
-                self.current_point: Point = self.find_point_in_list(item)
-                # print(self.current_point.point.pos())
-                self.current_point.point.setBrush(Qt.yellow)
-                self.draw_scene.mouseMoveEvent = self.myMouseMoveEvent
-                self.draw_scene.mouseReleaseEvent = self.scene_move_mouse_release_event  # print(item.pos())
+                # если кликнули на лабель
+                if item.type() == 8:
+                    self.create_label_on_line(item)
+
+                # если кликнули на вершину
+                elif item.type() == 4:
+                    self.current_point: Point = self.find_point_in_list(item) # noqa
+                    self.current_point.point.setBrush(Qt.yellow)
+                    self.draw_scene.mouseMoveEvent = self.myMouseMoveEvent
+                    self.draw_scene.mouseReleaseEvent = self.scene_move_mouse_release_event  # print(item.pos())
 
         elif event.button() == Qt.RightButton:
             item = self.get_item_under_mouse(QGraphicsEllipseItem)
@@ -139,7 +146,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         elif event.button() == Qt.MiddleButton:
             item = self.get_item_under_mouse()
-            self.remove_items(item)
+            self.remove_items(item) # noqa
 
     def myMouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         # self.current_item.setBrush(Qt.yellow)
@@ -178,7 +185,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         # пробегаем списко графоф
         for graph in self.graph_items:
-            # TODO : надоб засплитить на разыне методы удаления
+
             if item == graph.start_point.point or item == graph.finish_point.point or item == graph.arrow.line:
                 remove_flag = True
 
@@ -374,7 +381,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         # TODO : доделать
         pass
 
-    def change_table(self, row_pos: int, col_pos: int):
+    def change_table_event(self, row_pos: int, col_pos: int):
 
         if self.refresh_mode:
             for graph in self.graph_items:
@@ -406,10 +413,11 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             item = self.get_item_under_mouse()
             self.remove_items(item)
         elif event.button() == Qt.LeftButton:
-            item = self.get_item_under_mouse()
-            if item.type() == 8:
-                self.create_label_on_line(item)
-            print(self.get_item_under_mouse().type())
+            item : QGraphicsItem = self.get_item_under_mouse()
+            if item:
+                if item.type() == 8:
+                    self.create_label_on_line(item)
+                #print(self.get_item_under_mouse().type())
 
     def redraw_items(self):
         """Удаление элементов"""
@@ -563,29 +571,50 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         return label_int
 
     def create_label_on_line(self, weight: QGraphicsTextItem):
-        # TODO : доделать
+
         for graph in self.graph_items:
             if weight == graph.arrow.weight:
-                edit = QLineEdit()
-                edit.setText(weight.toPlainText())
-                edit.setParent(self)
-                edit.setGeometry(int(weight.pos().x()), int(weight.pos().y()), 20, 30)
-                edit.setMaxLength(2)
+
+                self.current_graph = graph # noqa
+
+                self.arrow_weight_edit = QLineEdit()
+                self.arrow_weight_edit.setText(weight.toPlainText())
+                self.arrow_weight_edit.setParent(self)
+                self.arrow_weight_edit.setGeometry(int(weight.pos().x()), int(weight.pos().y()), 20, 30)
+                self.arrow_weight_edit.setMaxLength(2)
 
                 self.current_weight = weight.toPlainText()
-                self.default_key_press_event = edit.keyPressEvent
-                edit.keyPressEvent == self.line_edit_release_key_event
 
-                edit.show()
+                self.arrow_weight_edit.focusOutEvent = self.edit_focus_out
+                # TODO : Доделать
+                # self.arrow_weight_edit.keyPressEvent = self.line_edit_release_key_event
+
+                self.arrow_weight_edit.show()
+                self.arrow_weight_edit.setFocus()
+
+    def edit_focus_out(self, event):
+        weight_int = self.arrow_weight_edit.text()
+        if weight_int == '':
+            weight_int = 0
+        else:
+            weight_int = int(weight_int)
+
+        weight = self.get_arrow_weight(weight_int, self.current_graph.arrow.line)
+        self.draw_scene.removeItem(self.current_graph.arrow.weight)
+        self.current_graph.arrow.weight = weight
+        self.draw_scene.addItem(weight)
+
+        self.arrow_weight_edit.hide()
+        self.refresh_table()
 
     def line_edit_release_key_event(self, event):
         # TODO : доделать
-        if event.key == Qt.key_enter:
+        if event.key == Qt.Key_Enter:
             print('some ')
 
     def import_form_csv(self, path="graph.csv"):
         j = 0
-        with open('graph.csv', encoding="utf-8") as class_file:
+        with open(path, encoding="utf-8") as class_file:
             file_reader = csv.reader(class_file, delimiter=",")
             for row in file_reader:
                 for i in range(0, len(row)):
@@ -764,8 +793,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# TODO : изменение веса у стрелки
 
 # TODO : сделать метод на выбор имён для вершин
 # TODO : проверка на коллизии
