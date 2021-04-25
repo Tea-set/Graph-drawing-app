@@ -98,7 +98,7 @@ class Graph:
         else:
             return node.index
 
-    def dijkstra(self, node):
+    def dijkstra(self, node, f_node = None):
         # Получает индекс узла (или поддерживает передачу int)
         nodenum = self.get_index_from_node(node)
         # Заставляет массив отслеживать расстояние от одного до любого узла
@@ -131,6 +131,13 @@ class Graph:
 
             queue.remove(min_node)
             seen.add(min_node)
+
+            # Условие выхода при нахождении пути до заданной ноды
+            # Если ноада не задана, ищет пути до всех вершин
+            if min_node:
+                if min_node == f_node:
+                    return dist
+
             # Получает все следующие перескоки
             connections = self.connections_from(min_node)
             # Для каждой связи обновляет путь и полное расстояние от

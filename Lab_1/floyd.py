@@ -1,86 +1,53 @@
-# Python Program for Floyd Warshall Algorithm
-
-# Number of vertices in the graph
-
-
-# Define infinity as the large
-# enough value. This value will be
-# used for vertices not connected to each other
 INF = float("INF")
 
 
-# Solves all pair shortest path
-# via Floyd Warshall Algorithm
+class Floyd:
 
-def floydWarshall(graph):
-    v = len(graph)
-    """ dist[][] will be the output
-       matrix that will finally
-        have the shortest distances
-        between every pair of vertices """
-    """ initializing the solution matrix
-    same as input graph matrix
-    OR we can say that the initial
-    values of shortest distances
-    are based on shortest paths considering no
-    intermediate vertices """
+    def __init__(self, weight_matrix):
+        self.v = len(weight_matrix)
+        self.weight_matrix = weight_matrix
+        self.dist = list(map(lambda i: list(map(lambda j: j, i)), weight_matrix))
+        self.path = [[0 for j in range(self.v)] for i in range(self.v)]
+        self.path_out = []
 
-    dist = list(map(lambda i: list(map(lambda j: j, i)), graph))
+    def floyd_warshall(self):
+        for k in range(self.v):
+            for i in range(self.v):
+                for j in range(self.v):
+                    if self.dist[i][j] > self.dist[i][k] + self.dist[k][j]:
+                        self.dist[i][j] = self.dist[i][k] + self.dist[k][j]
+                        self.path[i][j] = k
 
-    """ Add all vertices one by one
-    to the set of intermediate
-     vertices.
-     ---> Before start of an iteration,
-     we have shortest distances
-     between all pairs of vertices
-     such that the shortest
-     distances consider only the
-     vertices in the set
-    {0, 1, 2, .. k-1} as intermediate vertices.
-      ----> After the end of a
-      iteration, vertex no. k is
-     added to the set of intermediate
-     vertices and the
-    set becomes {0, 1, 2, .. k}
-    """
-    for k in range(v):
+    def print_solution(self):
+        print(
+            "Following matrix shows the shortest distances between every pair of vertices")
+        for i in range(self.v):
+            for j in range(self.v):
+                if (self.dist[i][j] == 0):
+                    print("INF ", end='')
+                else:
+                    print(self.dist[i][j], '', end='')
+                if j == self.v - 1:
+                    print()
 
-        # pick all vertices as source one by one
-        for i in range(v):
+    def path_p(self, i, j):
+        k = self.path[i][j]
+        if k == 0:
+            return
+        self.path_p(i, k)
+        self.path_out.append('X' + str(k + 1))
+        self.path_p(k, j)
 
-            # Pick all vertices as destination for the
-            # above picked source
-            for j in range(v):
-                # If vertex k is on the shortest path from
-                # i to j, then update the value of dist[i][j]
-                dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
+    def get_path(self, i, j):
+        self.path_p(i, j)
+        path = 'X' + str(i + 1) + '->'
+        for node in self.path_out:
+            path += node + '->'
+        path += 'X' + str(j + 1)
+        return path
 
-    printSolution(dist, v)
-
-
-# A utility function to print the solution
-def printSolution(dist, v):
-    print(
-        "Following matrix shows the shortest distances between every pair of vertices")
-    for i in range(v):
-        for j in range(v):
-            if (dist[i][j] == 0):
-                print("INF ", end='')
-            else:
-                print(dist[i][j], '', end='')
-            if j == v - 1:
-                print()
-
-
-# Driver program to test the above program
-# Let us create the following weighted graph
-
-graph = [[INF, 1, INF, INF, INF],
-         [INF, INF, 10, INF, 2],
-         [5, INF, INF, 6, INF],
-         [INF, 8, INF, INF, INF],
-         [7, INF, INF, 7, INF]
-         ]
-# Print the solution
-floydWarshall(graph)
-# This code is contributed by Mythri J L
+    def get_node_list(self, i, j) -> list:
+        # self.path_p(i, j)
+        self.path_out.insert(0, 'X' + str(i + 1))
+        self.path_out.append('X' + str(j + 1))
+        return self.path_out

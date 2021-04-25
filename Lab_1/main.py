@@ -1,25 +1,23 @@
-from dataclasses import dataclass
 import csv
-from pandas._libs.internals import defaultdict
-from datetime import time
-from math import cos, sin, atan2, sqrt
 import random
-from time import sleep
+import sys
+from dataclasses import dataclass
+from math import cos, sin, atan2
 from typing import Optional, Any, List
-from Lab_1.Dijkstra import Node
-from Lab_1.Dijkstra import Graph as Graph_d
-
-from Lab_1 import Form
+import time
 
 from PyQt5 import QtWidgets
-import sys
+from PyQt5.QtCore import Qt, QRectF, QPointF, QLineF
+from PyQt5.QtGui import QPen
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView, QGraphicsItem, \
+    QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsLineItem, QGraphicsTextItem, \
+    QTableWidgetItem, QLineEdit
+from pandas._libs.internals import defaultdict
 
-from PyQt5.QtWidgets import QWidget, QApplication, QGraphicsScene, QGraphicsView, QGraphicsRectItem, QGraphicsItem, \
-    QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsLineItem, QGraphicsSceneEvent, QGraphicsTextItem, \
-    QTextEdit, QTableWidgetItem, QLineEdit
-from PyQt5.QtGui import QPainter, QColor, QFont, QMouseEvent, QCursor, QPen
-from PyQt5.QtCore import Qt, QRectF, QSizeF, QPointF, QLineF
-from PyQt5.uic.properties import QtCore
+from Lab_1 import Form
+from Lab_1.Dijkstra import Graph as Graph_d
+from Lab_1.Dijkstra import Node
+from Lab_1.floyd import *
 
 
 def log_uncaught_exceptions(ex_cls, ex, tb):
@@ -87,6 +85,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.pushButton.clicked.connect(self.change_mod)
         self.pushButton_2.clicked.connect(self.create_points_by_edit)
         self.pushButton_3.clicked.connect(self.dijkstra_method)
+        self.pushButton_4.clicked.connect(self.floyd_method)
 
         self.actionexport_to_csv.triggered.connect(self.export_form_csv)
         self.actionimport_form_csv.triggered.connect(self.import_form_csv)
@@ -129,7 +128,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
                 # если кликнули на вершину
                 elif item.type() == 4:
-                    self.current_point: Point = self.find_point_in_list(item) # noqa
+                    self.current_point: Point = self.find_point_in_list(item)  # noqa
                     self.current_point.point.setBrush(Qt.yellow)
                     self.draw_scene.mouseMoveEvent = self.myMouseMoveEvent
                     self.draw_scene.mouseReleaseEvent = self.scene_move_mouse_release_event  # print(item.pos())
@@ -146,7 +145,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         elif event.button() == Qt.MiddleButton:
             item = self.get_item_under_mouse()
-            self.remove_items(item) # noqa
+            self.remove_items(item)  # noqa
 
     def myMouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         # self.current_item.setBrush(Qt.yellow)
@@ -388,6 +387,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 if self.label_to_int(graph.start_point.label) == row_pos + 1 and \
                         self.label_to_int(graph.finish_point.label) == col_pos + 1:
                     weight_int = self.tableWidget.item(row_pos, col_pos).text()
+
                     if weight_int == '':
                         weight_int = 0
                     else:
@@ -396,8 +396,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     weight = self.get_arrow_weight(weight_int, graph.arrow.line)
                     graph.arrow.weight = weight
                     self.draw_scene.addItem(weight)
+                    break
 
-                    return
+            self.refresh_table()
 
     def change_mod(self):
         """Переключение в режим удаления"""
@@ -413,11 +414,11 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             item = self.get_item_under_mouse()
             self.remove_items(item)
         elif event.button() == Qt.LeftButton:
-            item : QGraphicsItem = self.get_item_under_mouse()
+            item: QGraphicsItem = self.get_item_under_mouse()
             if item:
                 if item.type() == 8:
                     self.create_label_on_line(item)
-                #print(self.get_item_under_mouse().type())
+                # print(self.get_item_under_mouse().type())
 
     def redraw_items(self):
         """Удаление элементов"""
@@ -574,8 +575,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         for graph in self.graph_items:
             if weight == graph.arrow.weight:
-
-                self.current_graph = graph # noqa
+                self.current_graph = graph  # noqa
 
                 self.arrow_weight_edit = QLineEdit()
                 self.arrow_weight_edit.setText(weight.toPlainText())
@@ -614,7 +614,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
     def import_form_csv(self, path="graph.csv"):
         j = 0
-        with open(path, encoding="utf-8") as class_file:
+        self.refresh_mode = False
+        with open("graph.csv", encoding="utf-8") as class_file:
             file_reader = csv.reader(class_file, delimiter=",")
             for row in file_reader:
                 for i in range(0, len(row)):
@@ -622,13 +623,14 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     cell_item.setText(row[i])
                     self.tableWidget.setItem(j, i, cell_item)
                 j += 1
+        self.refresh_mode = True
         self.create_graph_by_table()
 
-    def export_form_csv(self, path='graph.csv'):
+    def export_form_csv(self, path="graph.csv"):
         names = self.graph_names
         if len(self.point_items) == 0:
             return
-        with open(path, mode="w", encoding="utf-8") as graph_file:
+        with open("graph.csv", mode="w", encoding="utf-8") as graph_file:
             file_writer = csv.DictWriter(graph_file, delimiter=",", lineterminator="\r", fieldnames=names)
 
             rows = self.tableWidget.rowCount()
@@ -689,11 +691,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         self.refresh_mode = True
 
-    def dijkstra_method(self):
+    # TODO : придумать имя функции
+    def check_for_runnable_methods(self):
         if self.spinBox_2.text() == self.spinBox_3.text():
             text = "Начальная и конечная вершины соввпадают"
             self.textBrowser.setText(text)
-            return
+            return False
 
         key_in_start = False
         key_in_fining = False
@@ -706,6 +709,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         if not key_in_start or not key_in_fining:
             text = "Выбраны неверные вершины"
             self.textBrowser.setText(text)
+            return False
+
+        return True
+
+    def dijkstra_method(self):
+        if not self.check_for_runnable_methods():
             return
 
         node_list = []
@@ -726,10 +735,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     weight = int(self.tableWidget.item(i, j).text())
 
                     w_graph.connect(start_point, finish_point, weight)
+        start_time = time.perf_counter()
+        min_ways = w_graph.dijkstra(node_list[int(self.spinBox_2.text()) - 1],
+                                    node_list[int(self.spinBox_3.text()) - 1])
+        finish_time = time.perf_counter()
 
-        min_ways = w_graph.dijkstra(node_list[int(self.spinBox_2.text()) - 1])
-        # str = ([(weight, [n.data for n in node]) for (weight, node) in min_ways])
-        # print(str)
+        # print([(weight, [n.data for n in node]) for (weight, node) in min_ways])
 
         nodes = []
         weights = []
@@ -755,12 +766,42 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         for s in str_l:
             str_out += s
 
+        str_out += "\ntine : " + str(finish_time - start_time)
+
         self.textBrowser.setText(str_out)
+        self.paint_graph_by_min_way(min_way)
+
+    def floyd_method(self):
+
+        if not self.check_for_runnable_methods():
+            return
+
+        for k in range(0, 10):
+            if self.tableWidget.item(0, k).text() == '':
+                break
+        weight_matrix = [[INF for j in range(k)] for i in range(k)]
+        for i in range(0, k):
+            for j in range(0, k):
+                if self.tableWidget.item(i, j).text() != '0':
+                    weight_matrix[i][j] = int(self.tableWidget.item(i, j).text())
+
+        floyd = Floyd(weight_matrix)
+        start_time = time.perf_counter()
+        floyd.floyd_warshall()
+        finish_time = time.perf_counter()
+        start, finish = int(self.spinBox_2.text()) - 1, int(self.spinBox_3.text()) - 1
+
+        path = floyd.get_path(start, finish)
+        weight = str(floyd.dist[start][finish])
+
+        self.textBrowser.setText(str(weight + ' : ' + path) + '\ntime : ' + str(finish_time - start_time))
+        min_way = floyd.get_node_list(start, finish)
         self.paint_graph_by_min_way(min_way)
 
     def paint_graph_by_min_way(self, min_way):
         """Выделяет минимальный путь"""
         self.draw_default()
+        print(min_way)
 
         for i in range(0, len(min_way) - 1):
             for graph in self.graph_items:
@@ -793,6 +834,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+# TODO : обработка при вводе весу 0
 
 # TODO : сделать метод на выбор имён для вершин
 # TODO : проверка на коллизии
