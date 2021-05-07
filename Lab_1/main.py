@@ -61,8 +61,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         # ----------------------<Настройка сцены для рисования>----------------------
         self.draw_scene = QGraphicsScene(self.frame)
         self.view = QGraphicsView(self.draw_scene, self)
-        self.view.setGeometry(self.frame.pos().x(), self.frame.pos().y(), 890, 290)
-        self.view.setSceneRect(self.frame.pos().x(), self.frame.pos().y(), 890, 290)
+        self.view.setGeometry(self.frame.pos().x(), self.frame.pos().y(), 901, 301)
+        self.view.setSceneRect(self.frame.pos().x(), self.frame.pos().y(), 901, 301)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
@@ -265,7 +265,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def draw_arrow(self, item: QGraphicsItem, weight: int = None):
         """Рисовние стрелок"""
         if self.start_line_pos_x:
-
             self.start_line_item.setBrush(Qt.red)
 
             if self.would_be_bidirectionality(item):
@@ -343,7 +342,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         if name:
             text = QGraphicsTextItem(name)
         else:
-            # TODO : метод подбора имени точки
             text = QGraphicsTextItem(self.graph_names[len(self.point_items)])
         x_pos = x + self.ellipse_radius
         y_pos = y - self.ellipse_radius - 5
@@ -376,19 +374,27 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         return center_x, center_y
 
     def chek_for_collisions(self, event):
-        # TODO : доделать
         pass
 
     def change_table_event(self, row_pos: int, col_pos: int):
 
         if self.refresh_mode:
-            for graph in self.graph_items:
+            change_weight_flag = False
+            for graph in self.graph_items:  # noqa
                 if self.label_to_int(graph.start_point.label) == row_pos + 1 and \
                         self.label_to_int(graph.finish_point.label) == col_pos + 1:
+                    change_weight_flag = True
                     weight_int = self.tableWidget.item(row_pos, col_pos).text()
 
-                    if weight_int == '':
+                    if weight_int == "":
                         weight_int = 0
+
+                    # убираем стерлку
+                    elif weight_int == "0":
+                        self.remove_items(graph.arrow.line)  # noqa
+                        break
+
+                    # меняем существующий вес
                     else:
                         weight_int = int(weight_int)
                     self.draw_scene.removeItem(graph.arrow.weight)
@@ -397,12 +403,32 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     self.draw_scene.addItem(weight)
                     break
 
+            # создаём ноывй путь
+            if not change_weight_flag:
+                if self.tableWidget.item(col_pos, row_pos).text() == "0":
+
+                    weight_int = self.tableWidget.item(row_pos, col_pos).text()
+                    for point in self.point_items:
+                        if self.label_to_int(point.label) == row_pos + 1:
+                            start_line_item = self.start_line_item
+                            self.start_line_item = point.point
+                        if self.label_to_int(point.label) == col_pos + 1:
+                            finish_point = point.point
+
+                    if self.start_line_item and finish_point:  # noqa
+                        start_line_pos_x, start_line_pos_y = self.start_line_pos_x, self.start_line_pos_y
+                        self.start_line_pos_x, self.start_line_pos_y = self.get_circle_center(self.start_line_item)
+                        self.draw_arrow(finish_point, weight_int)
+                        self.start_line_pos_x, self.start_line_pos_y = start_line_pos_x, start_line_pos_y
+
+                    self.start_line_item = start_line_item  # noqa
+
             self.refresh_table()
 
     def mouseRemoveItemEvent(self, event):
         if event.button() == Qt.RightButton:
             item = self.get_item_under_mouse()
-            self.remove_items(item)
+            self.remove_items(item)  # noqa
         elif event.button() == Qt.LeftButton:
             item: QGraphicsItem = self.get_item_under_mouse()
             if item:
@@ -917,7 +943,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-# TODO : обработка при вводе весу 0
-
-# TODO : сделать метод на выбор имён для вершин
-# TODO : проверка на коллизии
