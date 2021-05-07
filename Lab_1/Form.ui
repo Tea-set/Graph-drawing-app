@@ -6,9 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>914</width>
-    <height>649</height>
+    <width>913</width>
+    <height>639</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>913</width>
+    <height>639</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>913</width>
+    <height>639</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
@@ -19,7 +31,7 @@
      <rect>
       <x>10</x>
       <y>30</y>
-      <width>891</width>
+      <width>901</width>
       <height>301</height>
      </rect>
     </property>
@@ -33,7 +45,7 @@
    <widget class="QTableWidget" name="tableWidget">
     <property name="geometry">
      <rect>
-      <x>480</x>
+      <x>490</x>
       <y>340</y>
       <width>421</width>
       <height>251</height>
@@ -173,20 +185,13 @@
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>450</y>
-      <width>251</width>
-      <height>131</height>
+      <x>11</x>
+      <y>341</y>
+      <width>231</width>
+      <height>97</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>Режим удаления</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
@@ -215,7 +220,7 @@
      <item>
       <widget class="QPushButton" name="pushButton_4">
        <property name="text">
-        <string>Метод Флойда</string>
+        <string>Сравнить Методы</string>
        </property>
       </widget>
      </item>
@@ -224,22 +229,68 @@
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>290</x>
-      <y>340</y>
-      <width>181</width>
-      <height>251</height>
+      <x>10</x>
+      <y>470</y>
+      <width>471</width>
+      <height>121</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Поиск кратчайшего пути между</string>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Метод Флойда</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextBrowser" name="textBrowser_2"/>
+       </item>
+      </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Метод Дейкстры</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextBrowser" name="textBrowser"/>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>340</y>
+      <width>235</width>
+      <height>19</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Поиск кратчайшего пути между</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>380</y>
+      <width>221</width>
+      <height>62</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
@@ -280,42 +331,6 @@
        </item>
       </layout>
      </item>
-     <item>
-      <widget class="QTextBrowser" name="textBrowser"/>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="layoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>340</y>
-      <width>205</width>
-      <height>56</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout_3">
-     <item>
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Режим: стандартный</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>ЛКМ - передвинуть / добавить вершину</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>ПКМ - нарисовать стрелку</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </widget>
   </widget>
@@ -324,8 +339,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>914</width>
-     <height>18</height>
+     <width>913</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuSome_text">

@@ -82,10 +82,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
 
-        self.pushButton.clicked.connect(self.change_mod)
         self.pushButton_2.clicked.connect(self.create_points_by_edit)
+        self.pushButton_4.clicked.connect(self.compare_methods)
         self.pushButton_3.clicked.connect(self.dijkstra_method)
-        self.pushButton_4.clicked.connect(self.floyd_method)
 
         self.actionexport_to_csv.triggered.connect(self.export_form_csv)
         self.actionimport_form_csv.triggered.connect(self.import_form_csv)
@@ -400,15 +399,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
             self.refresh_table()
 
-    def change_mod(self):
-        """Переключение в режим удаления"""
-        if self.draw_scene.mousePressEvent == self.myMousePressCreateEvent:
-            self.pushButton.setStyleSheet("color:green")
-            self.draw_scene.mousePressEvent = self.mouseRemoveItemEvent
-        else:
-            self.draw_scene.mousePressEvent = self.myMousePressCreateEvent
-            self.pushButton.setStyleSheet("color:black")
-
     def mouseRemoveItemEvent(self, event):
         if event.button() == Qt.RightButton:
             item = self.get_item_under_mouse()
@@ -586,7 +576,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 self.current_weight = weight.toPlainText()
 
                 self.arrow_weight_edit.focusOutEvent = self.edit_focus_out
-                # TODO : Доделать
+
                 # self.arrow_weight_edit.keyPressEvent = self.line_edit_release_key_event
 
                 self.arrow_weight_edit.show()
@@ -685,9 +675,9 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                             finish_point = point
                             break
 
-                    self.start_line_item = start_point.point
+                    self.start_line_item = start_point.point  # noqa
                     self.start_line_pos_x, self.start_line_pos_y = self.get_circle_center(self.start_line_item)
-                    self.draw_arrow(finish_point.point, int(self.tableWidget.item(i, j).text()))
+                    self.draw_arrow(finish_point.point, int(self.tableWidget.item(i, j).text()))  # noqa
 
         self.refresh_mode = True
 
@@ -708,7 +698,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         if not key_in_start or not key_in_fining:
             text = "Выбраны неверные вершины"
-            self.textBrowser.setText(text)
+            self.textBrowser_2.setText(text)
             return False
 
         return True
@@ -722,8 +712,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             for point in self.point_items:
                 if name == point.label.toPlainText():
                     node_list.append(Node(point.label.toPlainText()))
-        # TODO : обработать начальную вершину
-        # TODO : вспомнить о чём тудуха выше
+
         w_graph = Graph_d.create_from_nodes(node_list)
 
         for i in range(0, 10):
@@ -750,7 +739,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 temp.append(n.data)
             weights.append(weight)
             nodes.append(temp)
-        self.textBrowser.setText('')
+        self.textBrowser_2.setText('')
 
         min_way = nodes[int(self.spinBox_3.text()) - 1]
         min_wei = weights[int(self.spinBox_3.text()) - 1]
@@ -766,9 +755,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         for s in str_l:
             str_out += s
 
-        str_out += "\ntine : " + str(finish_time - start_time)
+        str_out += "\n\ntine :\n" + str('{:0.20f}'.format(finish_time - start_time))
 
         self.textBrowser.setText(str_out)
+        self.textBrowser_2.setText("")
         self.paint_graph_by_min_way(min_way)
 
     def floyd_method(self):
@@ -794,7 +784,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         path = floyd.get_path(start, finish)
         weight = str(floyd.dist[start][finish])
 
-        self.textBrowser.setText(str(weight + ' : ' + path) + '\ntime : ' + str(finish_time - start_time))
+        self.textBrowser.setText(str(weight + ' : ' + path) + '\n\ntine :\n' + str(finish_time - start_time))
         min_way = floyd.get_node_list(start, finish)
         self.paint_graph_by_min_way(min_way)
 
@@ -813,6 +803,99 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     graph.arrow.line.setPen(pen)
                     graph.arrow.first_leaf.setPen(pen)
                     graph.arrow.second_leaf.setPen(pen)
+
+    def compare_methods(self):
+
+        total_time_dijkstra = 0
+        total_time_floyd = 0
+
+        for k in range(0, 10):
+            if self.tableWidget.item(0, k).text() == '':
+                break
+
+        # ---<Дейкстра>---
+        out_strg = ""
+        for ig in range(k):
+            for jg in range(k):
+                if not ig == jg:
+                    node_list = []
+                    for name in self.graph_names:
+                        for point in self.point_items:
+                            if name == point.label.toPlainText():
+                                node_list.append(Node(point.label.toPlainText()))
+
+                    w_graph = Graph_d.create_from_nodes(node_list)
+
+                    for i in range(0, 10):
+                        for j in range(0, 10):
+                            if self.tableWidget.item(i, j).text() != '' and self.tableWidget.item(i, j).text() != '0':
+                                # print(' ', self.tableWidget.item(i, j).text(), end = ' ')
+                                start_point = node_list[i]
+                                finish_point = node_list[j]
+                                weight = int(self.tableWidget.item(i, j).text())
+
+                                w_graph.connect(start_point, finish_point, weight)
+                    out_strg += "X" + str(ig + 1) + "-" + "X" + str(jg + 1) + ":\n"
+
+                    start_time = time.perf_counter()
+                    min_ways = w_graph.dijkstra(ig, jg)
+                    finish_time = time.perf_counter()
+
+                    nodes = []
+                    weights = []
+                    for (weight, node) in min_ways:
+                        temp = []
+                        for n in node:
+                            temp.append(n.data)
+                        weights.append(weight)
+                        nodes.append(temp)
+                    self.textBrowser_2.setText('')
+
+                    min_way = nodes[jg]
+                    min_wei = weights[jg]
+
+                    str_l = []
+
+                    for el in min_way:
+                        str_l.append(el)
+                        str_l.append('->')
+                    str_l.pop()
+
+                    str_out = ""
+                    for s in str_l:
+                        str_out += s
+
+                    total_time_dijkstra += finish_time - start_time
+                    out_strg += "Путь : " + str_out + "\nДлина : " + str(min_wei) + "\n\n"
+
+        self.textBrowser_2.setText(str("Общее время : \n" + str(total_time_dijkstra) + "\n\n" + out_strg))
+
+        # ---<Флойд>---
+        weight_matrix = [[INF for j in range(k)] for i in range(k)]  # noqa
+        for i in range(0, k):
+            for j in range(0, k):
+                if self.tableWidget.item(i, j).text() != '0':
+                    weight_matrix[i][j] = int(self.tableWidget.item(i, j).text())
+
+        out_str_d = ""
+
+        for ig in range(k):
+            for jg in range(k):
+                if not ig == jg:
+                    floyd = Floyd(weight_matrix)
+
+                    start_time = time.perf_counter()
+                    floyd.floyd_warshall()
+                    finish_time = time.perf_counter()
+
+                    path = floyd.get_path(ig, jg)
+                    weight = str(floyd.dist[ig][jg])
+
+                    out_str_d += "X" + str(ig + 1) + "-X" + str(jg + 1) + "\nПуть : " + path + "\nДлина : " + str(
+                        weight) + "\n\n"
+                    print(out_strg)
+                    total_time_floyd += finish_time - start_time
+        self.textBrowser.setText(str("Общее время : \n" + str(total_time_floyd) + "\n\n" + out_strg))
 
     def draw_default(self):
         """Красит граф в нормальные цывета"""
