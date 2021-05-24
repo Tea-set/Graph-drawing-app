@@ -50,6 +50,7 @@ class Graph:
     finish_point: Point
     arrow: Arrow
 
+# MAXINT = 9223372036854775807
 
 class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
@@ -373,9 +374,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         center_y = item.pos().y() + self.ellipse_radius
         return center_x, center_y
 
-    def chek_for_collisions(self, event):
-        pass
-
     def change_table_event(self, row_pos: int, col_pos: int):
 
         if self.refresh_mode:
@@ -589,7 +587,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
     def create_label_on_line(self, weight: QGraphicsTextItem):
 
-        for graph in self.graph_items:
+        for graph in self.graph_items: # noqa
             if weight == graph.arrow.weight:
                 self.current_graph = graph  # noqa
 
@@ -608,7 +606,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 self.arrow_weight_edit.show()
                 self.arrow_weight_edit.setFocus()
 
-    def edit_focus_out(self, event):
+    def edit_focus_out(self, event): # noqa
         weight_int = self.arrow_weight_edit.text()
         if weight_int == '':
             weight_int = 0
@@ -623,12 +621,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.arrow_weight_edit.hide()
         self.refresh_table()
 
-    def line_edit_release_key_event(self, event):
-        # TODO : доделать
-        if event.key == Qt.Key_Enter:
-            print('some ')
-
-    def import_form_csv(self, path="graph.csv"):
+    def import_form_csv(self):
         j = 0
         self.refresh_mode = False
         with open("graph.csv", encoding="utf-8") as class_file:
@@ -707,11 +700,11 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         self.refresh_mode = True
 
-    # TODO : придумать имя функции
     def check_for_runnable_methods(self):
         if self.spinBox_2.text() == self.spinBox_3.text():
             text = "Начальная и конечная вершины соввпадают"
             self.textBrowser.setText(text)
+            self.textBrowser_2.setText('')
             return False
 
         key_in_start = False
@@ -724,7 +717,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
         if not key_in_start or not key_in_fining:
             text = "Выбраны неверные вершины"
-            self.textBrowser_2.setText(text)
+            self.textBrowser.setText(text)
+            self.textBrowser_2.setText('')
             return False
 
         return True
@@ -765,7 +759,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 temp.append(n.data)
             weights.append(weight)
             nodes.append(temp)
-        self.textBrowser_2.setText('')
+        self.textBrowser.setText('')
 
         min_way = nodes[int(self.spinBox_3.text()) - 1]
         min_wei = weights[int(self.spinBox_3.text()) - 1]
@@ -817,7 +811,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
     def paint_graph_by_min_way(self, min_way):
         """Выделяет минимальный путь"""
         self.draw_default()
-        print(min_way)
+        # print(min_way)
 
         for i in range(0, len(min_way) - 1):
             for graph in self.graph_items:
@@ -919,7 +913,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
                     out_str_d += "X" + str(ig + 1) + "-X" + str(jg + 1) + "\nПуть : " + path + "\nДлина : " + str(
                         weight) + "\n\n"
-                    print(out_strg)
+                    # print(out_strg)
                     total_time_floyd += finish_time - start_time
         self.textBrowser.setText(str("Общее время : \n" + str(total_time_floyd) + "\n\n" + out_strg))
 

@@ -51,3 +51,17 @@ class Floyd:
         self.path_out.insert(0, 'X' + str(i + 1))
         self.path_out.append('X' + str(j + 1))
         return self.path_out
+
+
+if __name__ == '__main__':
+    graph = [[INF, INF, 3, INF],
+             [2, INF, INF, INF],
+             [INF, 7, INF, 1],
+             [6, INF, INF, INF]]
+
+    fl = Floyd(graph)
+    fl.floyd_warshall()
+    fl.print_solution()
+    print(fl.path)
+    print(fl.get_path(2,0))
+    # print(fl.get_node_list(3,1))
