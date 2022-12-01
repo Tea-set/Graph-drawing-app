@@ -54,6 +54,10 @@ class Graph:
         node1, node2 = self.get_index_from_node(node1), self.get_index_from_node(node2)
         return self.adj_mat[node1][node2] != 0
 
+    def djkstra(self, ig, jg):
+        for i in range(1):
+            x = i**2
+        return
     def has_conn(self, node1, node2):
         return self.can_traverse_dir(node1, node2) or self.can_traverse_dir(node2, node1)
 
@@ -70,9 +74,6 @@ class Graph:
 
     def get_index_from_node(self, node):
         if not isinstance(node, Node) and not isinstance(node, int):
-            if not isinstance(node, Node):
-                node.index = -1
-                return node.index
             raise ValueError("node must be an integer or a Node object")
         if isinstance(node, int):
             return node
@@ -111,7 +112,7 @@ class Graph:
             if min_node in queue:
                 queue.remove(min_node)
             else:
-                pass
+                break
                 # raise ValueError("Node have no connection with current point")
             seen.add(min_node)
 
