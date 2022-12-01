@@ -1,4 +1,5 @@
 import csv
+import math
 import random
 import sys
 from dataclasses import dataclass
@@ -49,6 +50,7 @@ class Graph:
     start_point: Point
     finish_point: Point
     arrow: Arrow
+
 
 # MAXINT = 9223372036854775807
 
@@ -235,6 +237,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         """Удаление вершины"""
         self.draw_scene.removeItem(point.point)
         self.draw_scene.removeItem(point.label)
+        self.start_line_pos_x, self.start_line_pos_y = None, None
 
     def remove_arrow(self, arrow: Arrow):
         """Удаление стрелки"""
@@ -291,9 +294,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             line.setFlag(QGraphicsItem.ItemClipsChildrenToShape)
             self.draw_scene.addItem(line)
 
-            arrow_weight = self.get_arrow_weight(weight, line)
-            self.draw_scene.addItem(arrow_weight)
-
             x = x2 - x1
             y = y2 - y1
 
@@ -318,6 +318,8 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             self.draw_scene.addItem(second_leaf)
 
             # создаём переменные для занесения их в граф
+            arrow_weight = self.get_arrow_weight(weight, firs_leaf, line)
+            self.draw_scene.addItem(arrow_weight)
             current_arrow = Arrow(line, firs_leaf, second_leaf, arrow_weight)
             start_point = self.find_point_in_list(self.start_line_item)
             finish_point = self.find_point_in_list(item)
@@ -330,6 +332,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 self.refresh_table()
 
             # зануливаем позиции, для возможности отрисовки стрелки снова
+
+            self.current_point = finish_point
+            self.redraw_arrow(self.current_graph.arrow, False)
+
             self.start_line_item = None
             self.start_line_pos_x, self.start_line_pos_y = None, None
         else:
@@ -350,11 +356,35 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         self.current_text = text
         return text
 
-    def get_arrow_weight(self, weight: int, line: QGraphicsLineItem) -> QGraphicsTextItem:  # noqa
+    def get_arrow_weight(self, weight: int, first_leaf, line: QGraphicsLineItem) -> QGraphicsTextItem:  # noqa
         arrow_weight = QGraphicsTextItem(str(weight))
-        arrow_weight.setPos(line.line().center().x(),
-                            line.line().center().y() - 30)
+        arrow_weight.setDefaultTextColor(Qt.blue)
+
+        k = 20
+
+        if first_leaf.line().center().x() < line.line().center().x():
+            x = first_leaf.line().center().x() + k
+        else:
+            x = first_leaf.line().center().x() - k
+
+        if first_leaf.line().center().x() > line.line().center().x():
+            y = first_leaf.line().center().y() + k / 2
+        else:
+            y = first_leaf.line().center().y() - k / 2
+
+        arrow_weight.setPos(
+            x,
+            # arrow.line.line().center().x() - 50,
+            y
+        )
         return arrow_weight
+
+        # arrow_weight.setPos(
+        #             first_leaf.line().center().x() - 70,
+        #             #arrow.line.line().center().x() - 50,
+        #             first_leaf.line().center().y() - 30
+        # )
+        # return arrow_weight
 
     def get_item_under_mouse(self, t: Optional[Any] = None) -> Optional[Any]:
         """Получение итема под графом"""
@@ -396,9 +426,10 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     else:
                         weight_int = int(weight_int)
                     self.draw_scene.removeItem(graph.arrow.weight)
-                    weight = self.get_arrow_weight(weight_int, graph.arrow.line)
+                    weight = self.get_arrow_weight(weight_int, graph.arrow.first_leaf, graph.arrow.line)
                     graph.arrow.weight = weight
                     self.draw_scene.addItem(weight)
+                    self.redraw_arrow(graph.arrow, False)
                     break
 
             # создаём ноывй путь
@@ -422,17 +453,6 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     self.start_line_item = start_line_item  # noqa
 
             self.refresh_table()
-
-    def mouseRemoveItemEvent(self, event):
-        if event.button() == Qt.RightButton:
-            item = self.get_item_under_mouse()
-            self.remove_items(item)  # noqa
-        elif event.button() == Qt.LeftButton:
-            item: QGraphicsItem = self.get_item_under_mouse()
-            if item:
-                if item.type() == 8:
-                    self.create_label_on_line(item)
-                # print(self.get_item_under_mouse().type())
 
     def redraw_items(self):
         """Удаление элементов"""
@@ -484,11 +504,11 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             lineCoords.setP2(QPointF(f1x2, f1y2))
             arrow.first_leaf.setLine(lineCoords)
 
-            f1x2 = x2 - lons * cos(angle + sharp)
-            f1y2 = y2 - lons * sin(angle + sharp)
+            f2x2 = x2 - lons * cos(angle + sharp)
+            f2y2 = y2 - lons * sin(angle + sharp)
 
             lineCoords.setP1(QPointF(x2, y2))
-            lineCoords.setP2(QPointF(f1x2, f1y2))
+            lineCoords.setP2(QPointF(f2x2, f2y2))
             arrow.second_leaf.setLine(lineCoords)
 
         else:
@@ -519,25 +539,57 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             lineCoords.setP1(QPointF(x2, y2))
             lineCoords.setP2(QPointF(f1x2, f1y2))
             arrow.first_leaf.setLine(lineCoords)
-
-            f1x2 = x2 - lons * cos(angle + sharp)
-            f1y2 = y2 - lons * sin(angle + sharp)
+            f2x2 = x2 - lons * cos(angle + sharp)
+            f2y2 = y2 - lons * sin(angle + sharp)
 
             lineCoords.setP1(QPointF(x2, y2))
-            lineCoords.setP2(QPointF(f1x2, f1y2))
+            lineCoords.setP2(QPointF(f2x2, f2y2))
             arrow.second_leaf.setLine(lineCoords)
+            print(1)
 
-        arrow.weight.setPos(
-            arrow.line.line().center().x(),
-            arrow.line.line().center().y() - 30
-        )
+        k = 40
+
+        sharp = 0.001
+
+        lons = math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1)) / 3
+        if lons < k:
+            lons = k
+
+        if x1 < x2:
+            x = f1x2
+            x = x2 - lons * cos(angle - sharp)
+            # print(cos(angle - sharp))
+        else:
+            x = f2x2
+            x = x2 - lons * cos(angle + sharp)
+            # print(cos(angle + sharp))
+
+        if y1 < y2:
+            # if sin(angle - sharp) > 0.45:
+            #     y = y2 - lons * 0.5
+            # else:
+            y = y2 - lons * sin(angle - sharp)
+
+        else:
+            y = y2 - lons * sin(angle + sharp)
+            # print(sin(angle + sharp))
+
+        arrow.weight.setPos(x, y)
 
     def would_be_bidirectionality(self, item: QGraphicsItem) -> bool:  # noqa
         for graph in self.graph_items:
-            if item == graph.start_point.point or item == graph.finish_point.point:
-                if self.start_line_item == graph.start_point.point or self.start_line_item == graph.finish_point.point:
+            if item == graph.start_point.point:
+                if self.start_line_item == graph.start_point.point:
                     return True
-            return False
+            elif item == graph.finish_point.point:
+                if self.start_line_item == graph.finish_point.point:
+                    return True
+
+        for graph in self.graph_items:
+            if graph.start_point.point == self.start_line_item and graph.finish_point.point == item:
+                return True
+
+        return False
 
     def clear_scene(self):
         for item in self.draw_scene.items():
@@ -587,7 +639,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
 
     def create_label_on_line(self, weight: QGraphicsTextItem):
 
-        for graph in self.graph_items: # noqa
+        for graph in self.graph_items:  # noqa
             if weight == graph.arrow.weight:
                 self.current_graph = graph  # noqa
 
@@ -606,19 +658,20 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                 self.arrow_weight_edit.show()
                 self.arrow_weight_edit.setFocus()
 
-    def edit_focus_out(self, event): # noqa
+    def edit_focus_out(self, event):  # noqa
         weight_int = self.arrow_weight_edit.text()
         if weight_int == '':
             weight_int = 0
         else:
             weight_int = int(weight_int)
 
-        weight = self.get_arrow_weight(weight_int, self.current_graph.arrow.line)
+        weight = self.get_arrow_weight(weight_int, self.current_graph.arrow.first_leaf, self.current_graph.arrow.line)
         self.draw_scene.removeItem(self.current_graph.arrow.weight)
         self.current_graph.arrow.weight = weight
         self.draw_scene.addItem(weight)
 
         self.arrow_weight_edit.hide()
+        self.redraw_arrow(self.current_graph.arrow, False)
         self.refresh_table()
 
     def import_form_csv(self):
@@ -724,6 +777,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
         return True
 
     def dijkstra_method(self):
+
         if not self.check_for_runnable_methods():
             return
 
@@ -824,7 +878,35 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     graph.arrow.first_leaf.setPen(pen)
                     graph.arrow.second_leaf.setPen(pen)
 
+    def remove_empty_nodes(self):
+        if not self.check_for_runnable_methods():
+            return
+
+        node_list = []
+        for name in self.graph_names:
+            for point in self.point_items:
+                if name == point.label.toPlainText():
+                    node_list.append(Node(point.label.toPlainText()))
+
+        w_graph = Graph_d.create_from_nodes(node_list)
+
+        for i in range(0, 10):
+            for j in range(0, 10):
+                if self.tableWidget.item(i, j).text() != '' and self.tableWidget.item(i, j).text() != '0':
+                    # print(' ', self.tableWidget.item(i, j).text(), end = ' ')
+                    start_point = node_list[i]
+                    finish_point = node_list[j]
+                    weight = int(self.tableWidget.item(i, j).text())
+
+                    w_graph.connect(start_point, finish_point, weight)
+        start_time = time.perf_counter()
+        min_ways = w_graph.dijkstra(node_list[int(self.spinBox_2.text()) - 1],
+                                    node_list[int(self.spinBox_3.text()) - 1])
+        finish_time = time.perf_counter()
+
     def compare_methods(self):
+        # if not self.check_for_runnable_methods():
+        #     return
 
         total_time_dijkstra = 0
         total_time_floyd = 0
@@ -833,11 +915,42 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
             if self.tableWidget.item(0, k).text() == '':
                 break
 
+        # ---<Флойд>---
+        not_to_run = []
+
+        weight_matrix = [[INF for j in range(k)] for i in range(k)]  # noqa
+        for i in range(0, k):
+            for j in range(0, k):
+                if self.tableWidget.item(i, j).text() != '0':
+                    weight_matrix[i][j] = int(self.tableWidget.item(i, j).text())
+
+        out_str_d = ""
+
+        for ig in range(k):
+            for jg in range(k):
+                if not ig == jg:
+                    floyd = Floyd(weight_matrix)
+
+                    start_time = time.perf_counter()
+                    floyd.floyd_warshall()
+                    finish_time = time.perf_counter()
+
+                    path = floyd.get_path(ig, jg)
+
+                    weight = str(floyd.dist[ig][jg])
+                    if weight == "inf":
+                        not_to_run.append([ig, jg])
+
+                    out_str_d += "X" + str(ig + 1) + "-X" + str(jg + 1) + "\nПуть : " + path + "\nДлина : " + str(
+                        weight) + "\n\n"
+                    total_time_floyd += finish_time - start_time
+        self.textBrowser.setText(str("Общее время : \n" + str(total_time_floyd) + "\n\n" + out_str_d))
+
         # ---<Дейкстра>---
         out_strg = ""
         for ig in range(k):
             for jg in range(k):
-                if not ig == jg:
+                if not ig == jg and [ig, jg] not in not_to_run:
                     node_list = []
                     for name in self.graph_names:
                         for point in self.point_items:
@@ -857,10 +970,12 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                                 w_graph.connect(start_point, finish_point, weight)
                     out_strg += "X" + str(ig + 1) + "-" + "X" + str(jg + 1) + ":\n"
 
+                    w_graph.print_adj_mat()
                     start_time = time.perf_counter()
                     min_ways = w_graph.dijkstra(ig, jg)
                     finish_time = time.perf_counter()
 
+                    # min_ways = ['']
                     nodes = []
                     weights = []
                     for (weight, node) in min_ways:
@@ -869,17 +984,16 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                             temp.append(n.data)
                         weights.append(weight)
                         nodes.append(temp)
-                    self.textBrowser_2.setText('')
 
                     min_way = nodes[jg]
                     min_wei = weights[jg]
 
                     str_l = []
 
-                    for el in min_way:
-                        str_l.append(el)
-                        str_l.append('->')
-                    str_l.pop()
+                    # for el in min_way:
+                    #     str_l.append(el)
+                    #     str_l.append('->')
+                    # str_l.pop()
 
                     str_out = ""
                     for s in str_l:
@@ -888,34 +1002,7 @@ class GUI(QtWidgets.QMainWindow, Form.Ui_MainWindow):
                     total_time_dijkstra += finish_time - start_time
                     out_strg += "Путь : " + str_out + "\nДлина : " + str(min_wei) + "\n\n"
 
-        self.textBrowser_2.setText(str("Общее время : \n" + str(total_time_dijkstra) + "\n\n" + out_strg))
-
-        # ---<Флойд>---
-        weight_matrix = [[INF for j in range(k)] for i in range(k)]  # noqa
-        for i in range(0, k):
-            for j in range(0, k):
-                if self.tableWidget.item(i, j).text() != '0':
-                    weight_matrix[i][j] = int(self.tableWidget.item(i, j).text())
-
-        out_str_d = ""
-
-        for ig in range(k):
-            for jg in range(k):
-                if not ig == jg:
-                    floyd = Floyd(weight_matrix)
-
-                    start_time = time.perf_counter()
-                    floyd.floyd_warshall()
-                    finish_time = time.perf_counter()
-
-                    path = floyd.get_path(ig, jg)
-                    weight = str(floyd.dist[ig][jg])
-
-                    out_str_d += "X" + str(ig + 1) + "-X" + str(jg + 1) + "\nПуть : " + path + "\nДлина : " + str(
-                        weight) + "\n\n"
-                    # print(out_strg)
-                    total_time_floyd += finish_time - start_time
-        self.textBrowser.setText(str("Общее время : \n" + str(total_time_floyd) + "\n\n" + out_strg))
+        self.textBrowser_2.setText(str("Общее время : \n" + str(total_time_dijkstra) + "\n\n" + out_str_d))
 
     def draw_default(self):
         """Красит граф в нормальные цывета"""
