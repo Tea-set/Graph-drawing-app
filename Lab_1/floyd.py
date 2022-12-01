@@ -11,6 +11,7 @@ class Floyd:
         self.path_out = []
 
     def floyd_warshall(self):
+        # Пробегает весю матрицу, находит кротчайшие пути, строит матрицу для нахождения этих путей
         for k in range(self.v):
             for i in range(self.v):
                 for j in range(self.v):
@@ -19,6 +20,7 @@ class Floyd:
                         self.path[i][j] = k
 
     def print_solution(self):
+        # выводит матрицу кротчайших путей
         print(
             "Following matrix shows the shortest distances between every pair of vertices")
         for i in range(self.v):
@@ -31,6 +33,8 @@ class Floyd:
                     print()
 
     def path_p(self, i, j):
+        # рекурсивно обходит матрицу для поиска путей
+        # выводит последоваетльность вершин
         k = self.path[i][j]
         if k == 0:
             return
@@ -39,6 +43,7 @@ class Floyd:
         self.path_p(k, j)
 
     def get_path(self, i, j):
+        # добовляет к предыдушему методу начальную и конечную вершины
         self.path_p(i, j)
         path = 'X' + str(i + 1) + '->'
         for node in self.path_out:
@@ -47,6 +52,7 @@ class Floyd:
         return path
 
     def get_node_list(self, i, j) -> list:
+        # модифицирует список вершин, работате с листом
         # self.path_p(i, j)
         self.path_out.insert(0, 'X' + str(i + 1))
         self.path_out.append('X' + str(j + 1))
